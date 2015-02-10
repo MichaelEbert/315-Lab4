@@ -1,10 +1,9 @@
-/* Name:  Myron Zhao and Michael Ebert
+/* Name:  Myron Zhao
  * Section:  3
- * Description:  This program is a MIPS simulator that simulates a 5 stage
- * 		 pipelined datapath. It offers 8 commands that can be viewed by
- * 		 typing in 'h'. It will run in either an interactive mode or a
- * 		 script	mode.
- */
+ * Description:  This program is a MIPS simulator, much like SPIM. It offers
+ * 		 8 commands that can be viewed by typing in 'h'. It will run
+ * 		 in either an interactive mode or a script mode.
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -416,6 +415,7 @@ skipcomment:
     if(argv[2] != NULL){
     	script = fopen(argv[2], "r");
     } 
+    //printf("mips> ");
     while(line){
 	printf("mips> ");
 	if(argv[2] != NULL){
@@ -427,10 +427,10 @@ skipcomment:
 	}
 	instr = *strtok(line, " ");
 	switch(instr){
-	case 'h' :
-		printf("\nh = show help\n");
-		printf("d = dump register state\n");
-		printf("s = single step through the program (i.e. execute 1 instruction and stop)\n");
+            case 'h' :
+                printf("\nh = show help\n");
+                printf("d = dump register state\n");
+                printf("s = single step through the program (i.e. execute 1 instruction and stop)\n");
 		printf("s num = step through num instructions of the program\n");
 		printf("r = run until the program ends\n");
 		printf("m num1 num2 = display data memory from location num1 to num2\n");
@@ -448,7 +448,6 @@ skipcomment:
 		printf("$t9 = %d		$sp = %d		$ra = %d		\n", reg[24], reg[25], reg[26]);
 		break;
             case 's' :
-		/////asdasdf
 		label = strtok(NULL, " ");
 		if(label == NULL){
 			i = 1;
@@ -490,6 +489,7 @@ skipcomment:
             default:
                 break;
 	}
+        //printf("mips> ");
     }
     fclose(script);
     return 0;
