@@ -14,6 +14,10 @@
 int reg[27];
 int dataMem[8192];
 int pc = 0;
+char *if_id = "empty";
+char *id_exe = "empty";
+char *exe_mem = "empty";
+char *mem_wb = "empty";
 
 char* cleanWord(char *word){
     char *temp = word;
@@ -119,6 +123,55 @@ int getReg(char* reg){
         printf("Invalid register ");
     }
     return num;
+}
+
+void getInstr(int num, char **instr){
+	switch(num){
+		case 0 :
+			*instr = "add";
+			break;
+		case 1 :
+			*instr = "and";
+			break;
+		case 2 :
+			*instr = "or";
+			break;
+		case 3 :
+			*instr = "sub";
+			break;
+		case 4 :
+			*instr = "slt";
+			break;
+		case 5 :
+			*instr = "sll";
+			break;
+		case 6 :
+			*instr = "addi";
+			break;
+		case 7 :
+			*instr = "lw";
+			break;
+		case 8 :
+			*instr = "sw";
+			break;
+		case 9 :
+			*instr = "j";
+			break;
+		case 10 :
+			*instr = "jal";
+			break;
+		case 11 :
+			*instr = "jr";
+			break;
+		case 12 :
+			*instr = "beq";
+			break;
+		case 13 :
+			*instr = "bne";
+			break;
+		default:
+			break;
+	}
 }
 
 void execute(int instr, int r1, int r2, int r3){
@@ -430,9 +483,10 @@ skipcomment:
 	case 'h' :
 		printf("\nh = show help\n");
 		printf("d = dump register state\n");
-		printf("s = single step through the program (i.e. execute 1 instruction and stop)\n");
-		printf("s num = step through num instructions of the program\n");
-		printf("r = run until the program ends\n");
+		printf("p = show pipeline registers\n");
+		printf("s = step through a single clock cycle step (i.e. simulate 1 cycle and stop)\n");
+		printf("s num = step through num clock cycles\n");
+		printf("r = run until the program ends and display timing summary\n");
 		printf("m num1 num2 = display data memory from location num1 to num2\n");
 		printf("c = clear all registers, memory, and the program counter to 0\n");
 		printf("q = exit the program\n");
@@ -448,7 +502,13 @@ skipcomment:
 		printf("$t9 = %d		$sp = %d		$ra = %d		\n", reg[24], reg[25], reg[26]);
 		break;
             case 's' :
-		/////asdasdf
+		mem_wb = exe_mem;
+		exe_mem = id_exe;
+		id_exe = if_id;
+		getInstr(arr[pc][0], &if_id);
+		printf("pc	if/id	id/exe	exe/mem	mem/wb\n");
+		printf("%d	%s	%s	%s	%s\n", pc, if_id, id_exe, exe_mem, mem_wb);
+		
 		label = strtok(NULL, " ");
 		if(label == NULL){
 			i = 1;
@@ -462,11 +522,16 @@ skipcomment:
 			pc++;
 		}
                 break;
+	    case 'p' :
+		printf("pc	if/id	id/exe	exe/mem	mem/wb\n");
+		printf("%d	%s	%s	%s	%s\n", pc, if_id, id_exe, exe_mem, mem_wb);
+		break;
             case 'r' :
 		while(pc != maxLineNum + 1){
 			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
 			pc++;
 		}
+		printf("Program complete\n");
                 break;
             case 'm' :
 		mStart = atoi(strtok(NULL, " "));
