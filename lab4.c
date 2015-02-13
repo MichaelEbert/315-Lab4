@@ -19,16 +19,16 @@ char *id_exe = "empty";
 char *exe_mem = "empty";
 char *mem_wb = "empty";
 
-void stripCommentsAndLabels(char** line){
+void stripCommentsAndLabels(char* line){
 	char *colonPos, *commentPos, *strippedLine;
 	int newLineLength;
-	colonPos = strchr(*line, ':');
+	colonPos = strchr(line, ':');
 	if(colonPos == NULL){
-		colonPos = *line - 1;
+		colonPos = line - 1;
 	}
-	commentPos = strchr(*line, '#');
+	commentPos = strchr(line, '#');
 	if(commentPos == NULL){
-		commentPos = *line + strlen(*line);
+		commentPos = line + strlen(line);
 	}
 	//don't include the colon in the line
 	newLineLength = commentPos - (colonPos+1);
@@ -37,8 +37,7 @@ void stripCommentsAndLabels(char** line){
 		strncpy(strippedLine, colonPos+1, newLineLength);
 	}
 	strippedLine[newLineLength] = '\0';
-	free(*line);
-	*line = strippedLine;
+	strcpy(line, strippedLine);
 	return;
 }
 
@@ -146,6 +145,9 @@ int strToReg(char* reg){
         printf("Invalid register ");
     }
     return num;
+}
+int strToImm(char* arg){
+    return atoi(arg);
 }
 
 char* numToInstr(int num){
@@ -378,62 +380,64 @@ int main(int argc, char* argv[]){
     }
 
     asmFile = fopen(argv[1], "r");
-    if(asmFile == NULL) perror ("Error opening file\n");
-    else{
-        while(fgets(line, 100, asmFile)){
-            word = strtok(line, ", 	");
-            if(*word != '#' && *word != '\n'){
-                lineNum++;
-            }
-            do{
-                temp = word;
-                if(labeled && *temp == '\n'){
-                    lineNum--;
-                }
-                labeled = 0;
-                while(*temp){
-                    if(*temp == '#'){
-                        break;
-                    }
-                    else if(*temp == ':'){
-                        cur = malloc(sizeof(labelList));
-                        cur->data = malloc(50);
-                        strcpy(cur->data, word);
-                        addNull = memchr(cur->data, ':', strlen(cur->data));
-                        *addNull = '\0';
-                        cur->next = head;
-                        cur->lineNum = lineNum;
-                        head = cur;
-                        labeled = 1;
-                    }
-                    temp++;
-                }
-            }while(word = strtok(NULL, ",	 "));
+    if(asmFile == NULL){
+        perror ("Error opening file\n");
+        return 1;
+    }
+    while(fgets(line, 100, asmFile)){
+        word = strtok(line, ", 	");
+        if(*word != '#' && *word != '\n'){
+            lineNum++;
         }
+        do{
+            temp = word;
+            if(labeled && *temp == '\n'){
+                lineNum--;
+            }
+            labeled = 0;
+            while(*temp){
+                if(*temp == '#'){
+                    break;
+                }
+                else if(*temp == ':'){
+                    cur = malloc(sizeof(labelList));
+                    cur->data = malloc(50);
+                    strcpy(cur->data, word);
+                    addNull = memchr(cur->data, ':', strlen(cur->data));
+                    *addNull = '\0';
+                    cur->next = head;
+                    cur->lineNum = lineNum;
+                    head = cur;
+                    labeled = 1;
+                }
+                temp++;
+            }
+        }while(word = strtok(NULL, ",	 "));
+    }
 
-        rewind(asmFile);
-	maxLineNum = lineNum;
-        lineNum = -1;
+    rewind(asmFile);
+maxLineNum = lineNum;
+    lineNum = -1;
 
 
 
 //Transfer instructions into memory
-        while(fgets(line, 100, asmFile)){
-        	line = stripCommentsAndLabels(line);
-            word = strtok(line, "$,(): \t");
-            if(word != NULL){
-            	int i = 0;
-            	//there is an instruciton on this line
-            	lineNum++;
-            	arr[lineNum][i] = instrToNum(word);
-            	i++;
-            	while(word = strtok(NULL, "$,(): \t")){
-            		arr[lineNum][i] = correctArg(arr[lineNum][0], i, word);
-            		i++;
-            	}
-            }
-            //word == null, do nothing
+    while(fgets(line, 100, asmFile)){
+    	stripCommentsAndLabels(line);
+        word = strtok(line, "$,(): \t");
+        if(word != NULL){
+        	int i = 0;
+        	//there is an instruciton on this line
+        	lineNum++;
+        	arr[lineNum][i] = instrToNum(word);
+        	i++;
+        	while(word = strtok(NULL, "$,(): \t")){
+        		arr[lineNum][i] = correctArg(arr[lineNum][0], i, word);
+        		i++;
+        	}
         }
+        //word == null, do nothing
+    }
  /*           		
           		
             do{
@@ -638,7 +642,7 @@ int main(int argc, char* argv[]){
 		mem_wb = exe_mem;
 		exe_mem = id_exe;
 		id_exe = if_id;
-		getInstr(arr[pc][0], &if_id);
+		if_id = numToInstr(arr[pc][0]);
 		printf("pc	if/id	id/exe	exe/mem	mem/wb\n");
 		printf("%d	%s	%s	%s	%s\n", pc, if_id, id_exe, exe_mem, mem_wb);
 		
@@ -684,7 +688,8 @@ int main(int argc, char* argv[]){
 		printf("	Simulator reset\n");	
 		break;
             case 'q' :
-                return;
+                fclose(script);
+                return 0;
             default:
                 break;
 	}
