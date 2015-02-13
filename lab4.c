@@ -19,6 +19,29 @@ char *id_exe = "empty";
 char *exe_mem = "empty";
 char *mem_wb = "empty";
 
+void stripCommentsAndLabels(char** line){
+	char *colonPos, *commentPos, *strippedLine;
+	int newLineLength;
+	colonPos = strchr(*line, ':');
+	if(colonPos == NULL){
+		colonPos = *line - 1;
+	}
+	commentPos = strchr(*line, '#');
+	if(commentPos == NULL){
+		commentPos = *line + strlen(*line);
+	}
+	//don't include the colon in the line
+	newLineLength = commentPos - (colonPos+1);
+	strippedLine = malloc(sizeof(char) * newLineLength+1);
+	if(newLineLength>0){
+		strncpy(strippedLine, colonPos+1, newLineLength);
+	}
+	strippedLine[newLineLength] = '\0';
+	free(*line);
+	*line = strippedLine;
+	return;
+}
+
 char* cleanWord(char *word){
     char *temp = word;
     int len = strlen(word);
@@ -31,7 +54,7 @@ char* cleanWord(char *word){
     return word;
 }
 
-int getReg(char* reg){ 
+int strToReg(char* reg){ 
     strcpy(reg, strtok(NULL, ",()	 "));
     cleanWord(reg);
     int num = 0;
@@ -125,53 +148,99 @@ int getReg(char* reg){
     return num;
 }
 
-void getInstr(int num, char **instr){
+char* numToInstr(int num){
 	switch(num){
 		case 0 :
-			*instr = "add";
+			return "add";
 			break;
 		case 1 :
-			*instr = "and";
+			return "and";
 			break;
 		case 2 :
-			*instr = "or";
+			return "or";
 			break;
 		case 3 :
-			*instr = "sub";
+			return "sub";
 			break;
 		case 4 :
-			*instr = "slt";
+			return "slt";
 			break;
 		case 5 :
-			*instr = "sll";
+			return "sll";
 			break;
 		case 6 :
-			*instr = "addi";
+			return "addi";
 			break;
 		case 7 :
-			*instr = "lw";
+			return "lw";
 			break;
 		case 8 :
-			*instr = "sw";
+			return "sw";
 			break;
 		case 9 :
-			*instr = "j";
+			return "j";
 			break;
 		case 10 :
-			*instr = "jal";
+			return "jal";
 			break;
 		case 11 :
-			*instr = "jr";
+			return "jr";
 			break;
 		case 12 :
-			*instr = "beq";
+			return "beq";
 			break;
 		case 13 :
-			*instr = "bne";
+			return "bne";
 			break;
 		default:
 			break;
 	}
+}
+int instrToNum(char* instr){
+	if(!strcmp(instr, "add")){
+		return 0;
+	}
+	if(!strcmp(instr, "and")){
+		return 1;
+	}
+	if(!strcmp(instr, "or")){
+		return 2;
+	}
+	if(!strcmp(instr, "sub")){
+		return 3;
+	}
+	if(!strcmp(instr, "slt")){
+		return 4;
+	}
+	if(!strcmp(instr, "sll")){
+		return 5;
+	}
+	if(!strcmp(instr, "addi")){
+		return 6;
+	}
+	if(!strcmp(instr, "lw")){
+		return 7;
+	}
+	if(!strcmp(instr, "sw")){
+		return 8;
+	}
+	if(!strcmp(instr, "j")){
+		return 9;
+	}
+	if(!strcmp(instr, "jal")){
+		return 10;
+	}
+	if(!strcmp(instr, "jr")){
+		return 11;
+	}
+	if(!strcmp(instr, "beq")){
+		return 12;
+	}
+	if(!strcmp(instr, "bne")){
+		return 13;
+	}
+	//invalid instruction!
+	return 999;
 }
 
 void execute(int instr, int r1, int r2, int r3){
@@ -227,6 +296,49 @@ void execute(int instr, int r1, int r2, int r3){
 	}
 }
 
+//Note: argNum starts from 1, not 0 - arg 0 is the instruction!
+int correctArg(int instr, int argNum, char* arg){
+    switch(instr){
+        //All registers
+    	case 0 :	// add
+    	case 1 :	//and
+    	case 2 :	// or
+    	case 3 :	// sub
+    	case 4 :	// slt
+    	case 5 :	// sll
+    	case 11 :	// jr
+            return strToReg(arg);
+            break;
+        //arg1, arg2 are registers, arg3 is immediate
+    	case 6 :	// addi
+    	case 12 :	// beq
+    	case 13 :	// bne
+    	    if(argNum == 1 || argNum == 2){
+    	        return strToReg(arg);
+    	    }
+    	    else{
+    	        return strToImm(arg);
+    	    }
+    	    break;
+        //arg1, arg3 are registers, arg2 is immediate
+    	case 7 :	// lw
+    	case 8 :	// sw
+    	     if(argNum == 1 || argNum == 3){
+    	        return strToReg(arg);
+    	    }
+    	    else{
+    	        return strToImm(arg);
+    	    }
+    	    break;
+    	case 9 :	// j
+    	case 10 :	// jal
+    		return strToImm(arg);
+    		break;
+    	default:
+    		break;
+    	
+    }
+}
 int main(int argc, char* argv[]){
 
     typedef struct labelList{
@@ -303,9 +415,27 @@ int main(int argc, char* argv[]){
 	maxLineNum = lineNum;
         lineNum = -1;
 
-skipcomment:
+
+
+//Transfer instructions into memory
         while(fgets(line, 100, asmFile)){
-            word = strtok(line, "$,():	 ");
+        	line = stripCommentsAndLabels(line);
+            word = strtok(line, "$,(): \t");
+            if(word != NULL){
+            	int i = 0;
+            	//there is an instruciton on this line
+            	lineNum++;
+            	arr[lineNum][i] = instrToNum(word);
+            	i++;
+            	while(word = strtok(NULL, "$,(): \t")){
+            		arr[lineNum][i] = correctArg(arr[lineNum][0], i, word);
+            		i++;
+            	}
+            }
+            //word == null, do nothing
+        }
+ /*           		
+          		
             do{
                 if(*word == '#'){
                     goto skipcomment;
@@ -322,7 +452,10 @@ skipcomment:
                     lineNum++;
         	    arr[lineNum][0] = 1; 
 		    arr[lineNum][1] = getReg(r);
-	            arr[lineNum][2] = getReg(r);
+	               		
+            		
+            		
+           arr[lineNum][2] = getReg(r);
 		    arr[lineNum][3] = getReg(r);
                     goto skipcomment;
                 }
@@ -463,7 +596,7 @@ skipcomment:
                 }
             }while(word = strtok(NULL, ",()	 "));
         }
-    }
+    }*/
     fclose(asmFile);
    
     if(argv[2] != NULL){
