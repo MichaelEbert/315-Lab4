@@ -13,7 +13,11 @@
 
 int reg[27];
 int dataMem[8192];
+int arr[100][4];
 int pc = 0;
+int sim_pc = 0;
+int num_instr = 0;
+int cycles = 0;
 char *if_id = "empty";
 char *id_exe = "empty";
 char *exe_mem = "empty";
@@ -296,6 +300,40 @@ void execute(int instr, int r1, int r2, int r3){
 			break;
 		
 	}
+	num_instr++;
+}
+
+int detectStall (int pcount, char *idexe) {
+	int lwReg;
+	int stall = 0;
+	if (pcount  && !strcmp(idexe, "lw")) {
+		lwReg = arr[pcount - 1][1];
+		if (arr[pcount][0] < 5) { // if depends on both r2 and r3
+			if (arr[pcount][2] == lwReg || arr[pcount][3] == lwReg)
+				stall = 1;
+		}
+		else if (arr[pcount][0] == 5 || arr[pcount][0] == 6) { // depends on only on r2
+			if (arr[pcount][2] == lwReg) 
+				stall = 1;
+		}
+		else if (arr[pcount][0] == 7) { // depends only on r3
+			if (arr[pcount][3] == lwReg)
+				stall = 1;
+		}
+		else if (arr[pcount][0] == 8) { // depends on r1 and r3
+			if (arr[pcount][1] == lwReg || arr[pcount][3] == lwReg)
+				stall = 1;
+		}
+		else if (arr[pcount][0] == 11) { // depends only on r1
+			if (arr[pcount][1] == lwReg)
+				stall = 1;
+		}
+		else if (arr[pcount][0] > 11) { // depends on r1 and r2
+			if (arr[pcount][1] == lwReg || arr[pcount][2] == lwReg)
+				stall = 1;
+		}
+	}
+	return stall;
 }
 
 //Note: argNum starts from 1, not 0 - arg 0 is the instruction!
@@ -366,7 +404,6 @@ int main(int argc, char* argv[]){
     char *addNull;
     char instr = 0;
     int i = 0;
-    int arr[100][4];
     int maxLineNum = 0;
     int mStart = 0;
     int mEnd = 0;
@@ -639,13 +676,7 @@ maxLineNum = lineNum;
 		printf("$t9 = %d		$sp = %d		$ra = %d		\n", reg[24], reg[25], reg[26]);
 		break;
             case 's' :
-		mem_wb = exe_mem;
-		exe_mem = id_exe;
-		id_exe = if_id;
-		if_id = numToInstr(arr[pc][0]);
-		printf("pc	if/id	id/exe	exe/mem	mem/wb\n");
-		printf("%d	%s	%s	%s	%s\n", pc, if_id, id_exe, exe_mem, mem_wb);
-		
+
 		label = strtok(NULL, " ");
 		if(label == NULL){
 			i = 1;
@@ -653,22 +684,55 @@ maxLineNum = lineNum;
 		else{
 			i = atoi(label);
 		}	
-		printf("	%d instruction(s) executed\n", i);
 		while(i--){
 			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
 			pc++;
+
+			if (!detectStall(sim_pc - 1, id_exe)) {
+				mem_wb = exe_mem;
+				exe_mem = id_exe;
+				id_exe = if_id;
+				getInstr(arr[sim_pc][0], &if_id);
+				sim_pc++;
+			}
+			else {
+				mem_wb = exe_mem;
+				exe_mem = id_exe;
+				id_exe = "stall";
+			}
+			cycles++;
+			if (i == 0) {
+				printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
+				printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
+			}
 		}
                 break;
 	    case 'p' :
-		printf("pc	if/id	id/exe	exe/mem	mem/wb\n");
-		printf("%d	%s	%s	%s	%s\n", pc, if_id, id_exe, exe_mem, mem_wb);
+		printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
+		printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
 		break;
             case 'r' :
 		while(pc != maxLineNum + 1){
 			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
 			pc++;
 		}
-		printf("Program complete\n");
+		while (sim_pc != maxLineNum + 1) {
+			if (!detectStall(sim_pc - 1, id_exe)) {
+				mem_wb = exe_mem;
+				exe_mem = id_exe;
+				id_exe = if_id;
+				getInstr(arr[sim_pc][0], &if_id);
+				sim_pc++;
+			}
+			else {
+				mem_wb = exe_mem;
+				exe_mem = id_exe;
+				id_exe = "stall";
+			}
+			cycles++;
+		}
+		printf("\nProgram complete\n");
+		printf("CPI = %0.3lf	Cycles = %d	Instructions = %d\n\n", (double)(cycles + 4)/num_instr, cycles + 4, num_instr);
                 break;
             case 'm' :
 		mStart = atoi(strtok(NULL, " "));
