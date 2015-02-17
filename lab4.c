@@ -384,6 +384,16 @@ int detectStall (int pcount, char *idexe) {
 	}
 	return stall;
 }
+//EX hazard
+    if((incomingInstruction.input1 == otherInstruction.output
+    || incomingInstruction.input2 == otherInstruction.output)
+    && otherInstrucion.output != register0){
+        //forward instruction - implement later
+    }
+    //memory hazard also does forwarding
+    
+    
+
 
 //Note: argNum starts from 1, not 0 - arg 0 is the instruction!
 int correctArg(int instrNum, int instr, int argNum, char* arg, labelList* labelHead){
