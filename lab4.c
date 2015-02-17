@@ -339,11 +339,11 @@ void execute(int instr, int r1, int r2, int r3){
 			break;
 		case 12 :	// beq
 			if(reg[r1] == reg[r2])
-				pc = r3 - 1;
+				pc = pc + r3 - 1;
 			break;
 		case 13 :	// bne
 			if(reg[r1] != reg[r2])
-				pc = r3 - 1;
+				pc = pc + r3 - 1;
 			break;
 		default:
 			break;
@@ -384,6 +384,7 @@ int detectStall (int pcount, char *idexe) {
 	}
 	return stall;
 }
+/*
 //EX hazard
     if((incomingInstruction.input1 == otherInstruction.output
     || incomingInstruction.input2 == otherInstruction.output)
@@ -392,6 +393,7 @@ int detectStall (int pcount, char *idexe) {
     }
     //memory hazard also does forwarding
     
+    */
     
 
 
@@ -592,7 +594,7 @@ int main(int argc, char* argv[]){
     }*/
 
     rewind(asmFile);    
-    maxLineNum = instructionNum - 1;
+    maxLineNum = instructionNum;
     lineNum = -1;
 
 
@@ -614,169 +616,6 @@ int main(int argc, char* argv[]){
         }
         //else word == null, do nothing
     }
- /*           		
-          		
-            do{
-                if(*word == '#'){
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "add")){
-                    lineNum++;
-        	    arr[lineNum][0] = 0; 
-		    arr[lineNum][1] = getReg(r);
-	            arr[lineNum][2] = getReg(r);
-		    arr[lineNum][3] = getReg(r);
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "and")){
-                    lineNum++;
-        	    arr[lineNum][0] = 1; 
-		    arr[lineNum][1] = getReg(r);
-	               		
-            		
-            		
-           arr[lineNum][2] = getReg(r);
-		    arr[lineNum][3] = getReg(r);
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "or")){
-                    lineNum++;
-        	    arr[lineNum][0] = 2; 
-		    arr[lineNum][1] = getReg(r);
-	            arr[lineNum][2] = getReg(r);
-		    arr[lineNum][3] = getReg(r);
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "sub")){
-                    lineNum++;
-        	    arr[lineNum][0] = 3; 
-		    arr[lineNum][1] = getReg(r);
-	            arr[lineNum][2] = getReg(r);
-		    arr[lineNum][3] = getReg(r);
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "slt")){
-                    lineNum++;
-        	    arr[lineNum][0] = 4; 
-		    arr[lineNum][1] = getReg(r);
-	            arr[lineNum][2] = getReg(r);
-		    arr[lineNum][3] = getReg(r);
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "sll")){
-                    lineNum++;
-        	    arr[lineNum][0] = 5; 
-		    arr[lineNum][1] = getReg(r);
-	            arr[lineNum][2] = getReg(r);
-		    arr[lineNum][3] = atoi(cleanWord(strtok(NULL, ",	 ")));
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "addi")){
-                    lineNum++;
-        	    arr[lineNum][0] = 6; 
-		    arr[lineNum][1] = getReg(r);
-	            arr[lineNum][2] = getReg(r);
-		    arr[lineNum][3] = atoi(cleanWord(strtok(NULL, ",	 ")));
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "lw")){
-                    lineNum++;
-        	    arr[lineNum][0] = 7; 
-		    arr[lineNum][1] = getReg(r);
-	            arr[lineNum][2] = atoi(strtok(NULL, "(),	 "));
-		    arr[lineNum][3] = getReg(r);
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "sw")){
-                    lineNum++;
-        	    arr[lineNum][0] = 8; 
-		    arr[lineNum][1] = getReg(r);
-	            arr[lineNum][2] = atoi(strtok(NULL, "(),	 "));
-		    arr[lineNum][3] = getReg(r);
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "j")){
-                    lineNum++;
-                    label = cleanWord(strtok(NULL, "(),	 "));
-                    cur = head;
-                    while(cur){
-                        if(!strcmp(label, cur->data)){
-                            jLine = cur->lineNum;
-                        }
-                        cur = cur->next;
-                    }
-        	    arr[lineNum][0] = 9; 
-		    arr[lineNum][1] = jLine;
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "jal")){
-                    lineNum++;
-                    label = cleanWord(strtok(NULL, "(),	 "));
-                    cur = head;
-                    while(cur){
-                        if(!strcmp(label, cur->data)){
-                            jLine = cur->lineNum;
-                        }
-                        cur = cur->next;
-                    }
-        	    arr[lineNum][0] = 10;
-		    arr[lineNum][1] = jLine;
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "jr")){
-                    lineNum++;
-		    arr[lineNum][0] = 11;
-		    arr[lineNum][1] = getReg(r);
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "beq")){
-                    lineNum++;
-		    arr[lineNum][0] = 12;
-		    arr[lineNum][1] = getReg(r);
-		    arr[lineNum][2] = getReg(r);
-                    strcpy(label, cleanWord(strtok(NULL, ",	 ")));
-                    cur = head;
-                    while(cur){
-                        if(!strcmp(label, cur->data)){
-                            jLine = cur->lineNum;
-                        }
-                        cur = cur->next;
-                    }
-		    arr[lineNum][3] = jLine;
-                    goto skipcomment;
-                }
-                else if(!strcmp(word, "bne")){
-                    lineNum++;
-		    arr[lineNum][0] = 13;
-		    arr[lineNum][1] = getReg(r);
-		    arr[lineNum][2] = getReg(r);
-                    strcpy(label, cleanWord(strtok(NULL, ",	 ")));
-                    cur = head;
-                    while(cur){
-                        if(!strcmp(label, cur->data)){
-                            jLine = cur->lineNum;
-                        }
-                        cur = cur->next;
-                    }
-		    arr[lineNum][3] = jLine;
-                    goto skipcomment;
-                }
-                else if(strcmp(word, "\n")){
-                    cur = head;
-                    while(cur){
-                        if(!strcmp(word, cur->data)){
-                            isLabel = 1;
-                        }
-                        cur = cur->next;
-                    }
-                    if(!isLabel){
-                        printf("invalid instruction: %s\n", word);
-                        return 0;
-                    }
-                }
-            }while(word = strtok(NULL, ",()	 "));
-        }
-    }*/
     fclose(asmFile);
    
     if(argc > 2){
@@ -827,27 +666,46 @@ int main(int argc, char* argv[]){
     		}
     		//execute the instructions
     		while(numLines--){
+                int unbranchedPC = pc + 1;
     			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
     			pc++;
     
     			if (!detectStall(sim_pc - 1, id_exe)) {
-    				mem_wb = exe_mem;
-    				exe_mem = id_exe;
-    				id_exe = if_id;
-    				if_id = numToInstr(arr[sim_pc][0]);
-    				sim_pc++;
-    			}
-    			else {
-    				mem_wb = exe_mem;
-    				exe_mem = id_exe;
-    				id_exe = "stall";
-    			}
-    			cycles++;
-    			if (i == 0) {
-    				printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
-    				printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
-    			}
-    		}
+                    if(unbranchedPC != pc){
+                        //branch taken, so squash
+                        if(arr[pc][0] == instrToNum("j") ||
+                        arr[pc][0] == instrToNum("jr") ||
+                        arr[pc][0] == instrToNum("jal")){
+                            mem_wb = exe_mem;
+                            exe_mem = id_exe;
+                            id_exe = if_id;
+                            if_id = "squash";
+                        }
+                        if(arr[pc][0] == instrToNum("beq") ||
+                        arr[pc][0] == instrToNum("bne")){
+                            mem_wb = exe_mem;
+                            exe_mem = "squash";
+                            id_exe = "squash";
+                            if_id = "squash";
+                        }
+                    }
+                    mem_wb = exe_mem;
+                    exe_mem = id_exe;
+                    id_exe = if_id;
+                    if_id = numToInstr(arr[sim_pc][0]);
+                    sim_pc++;
+                }
+                else {
+                    mem_wb = exe_mem;
+                    exe_mem = id_exe;
+                    id_exe = "stall";
+                }
+                cycles++;
+                if (i == 0) {
+                    printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
+                    printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
+                }
+            }
             break;
     	case 'p' :
     		printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
@@ -894,8 +752,7 @@ int main(int argc, char* argv[]){
     		printf("\tSimulator reset\n");	
     		break;
         case 'q' :
-            fclose(script);
-            return 0;
+            line = NULL;
             break;
         default:
             break;
