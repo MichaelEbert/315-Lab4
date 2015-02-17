@@ -11,6 +11,14 @@
 #include <ctype.h>
 #include <string.h>
 
+#define WHITESPACE_AND_PUNCTUATION "$,(): \t\n"
+
+typedef struct labelList{
+    struct labelList *next;
+    char *data;
+    int lineNum;
+} labelList;
+
 int reg[27];
 int dataMem[8192];
 int arr[100][4];
@@ -23,25 +31,38 @@ char *id_exe = "empty";
 char *exe_mem = "empty";
 char *mem_wb = "empty";
 
-void stripCommentsAndLabels(char* line){
-	char *colonPos, *commentPos, *strippedLine;
-	int newLineLength;
-	colonPos = strchr(line, ':');
-	if(colonPos == NULL){
-		colonPos = line - 1;
-	}
-	commentPos = strchr(line, '#');
+void stripComments(char* line){
+    char* commentPos;
+    commentPos = strchr(line, '#');
 	if(commentPos == NULL){
 		commentPos = line + strlen(line);
 	}
+	*commentPos = '\0';
+	return;
+}
+	
+
+void stripCommentsAndLabels(char* line){
+	char *colonAddr, *strippedLine;
+	int newLineLength;
+	int colonPos;
+	//first strip comments
+	stripComments(line);
+	//now strip label
+	colonAddr = strchr(line, ':');
+	if(colonAddr == NULL){
+		colonAddr = line - 1;
+	}
+	colonPos = colonAddr - line;
 	//don't include the colon in the line
-	newLineLength = commentPos - (colonPos+1);
+	newLineLength = strlen(line) - (colonPos+1);
 	strippedLine = malloc(sizeof(char) * newLineLength+1);
 	if(newLineLength>0){
-		strncpy(strippedLine, colonPos+1, newLineLength);
+		strncpy(strippedLine, colonAddr+1, newLineLength);
 	}
 	strippedLine[newLineLength] = '\0';
 	strcpy(line, strippedLine);
+	free(strippedLine);
 	return;
 }
 
@@ -58,9 +79,9 @@ char* cleanWord(char *word){
 }
 
 int strToReg(char* reg){ 
-    strcpy(reg, strtok(NULL, ",()	 "));
-    cleanWord(reg);
-    int num = 0;
+    //strcpy(reg, strtok(NULL, ",()	 "));
+    //cleanWord(reg);
+    int num;
     if(!strcmp(reg, "$0") || !strcmp(reg, "$zero")){
         num = 0;
     }
@@ -146,12 +167,39 @@ int strToReg(char* reg){
     	num = 26;
     }
     else{
-        printf("Invalid register ");
+        //might be direct numbered register
+        num = atoi(reg);
+        if(num < 0 || num > 27){
+            num = -1;
+            printf("Invalid register ");
+        }
     }
     return num;
 }
-int strToImm(char* arg){
-    return atoi(arg);
+
+//returns -1 if not a label
+int strToLabel(char* arg, labelList* labelHead){
+    while(labelHead != NULL){
+        //if this is correct label
+        if(!strcmp(labelHead->data, arg)){
+            return labelHead->lineNum;
+        }
+        //otherwise
+        labelHead = labelHead->next;
+    }
+    //if no correct labels
+    return -1;
+}
+
+//if arg is a label, returns the instruction address the label points to.
+int strToImm(char* arg, labelList* labelHead){
+    int instrAddr = strToLabel(arg, labelHead);
+    if(instrAddr != -1){
+        return instrAddr;
+    }
+    else{
+        return atoi(arg);
+    }
 }
 
 char* numToInstr(int num){
@@ -199,6 +247,7 @@ char* numToInstr(int num){
 			return "bne";
 			break;
 		default:
+		    return "ERR";
 			break;
 	}
 }
@@ -337,7 +386,7 @@ int detectStall (int pcount, char *idexe) {
 }
 
 //Note: argNum starts from 1, not 0 - arg 0 is the instruction!
-int correctArg(int instr, int argNum, char* arg){
+int correctArg(int instrNum, int instr, int argNum, char* arg, labelList* labelHead){
     switch(instr){
         //All registers
     	case 0 :	// add
@@ -351,13 +400,11 @@ int correctArg(int instr, int argNum, char* arg){
             break;
         //arg1, arg2 are registers, arg3 is immediate
     	case 6 :	// addi
-    	case 12 :	// beq
-    	case 13 :	// bne
     	    if(argNum == 1 || argNum == 2){
     	        return strToReg(arg);
     	    }
     	    else{
-    	        return strToImm(arg);
+    	        return strToImm(arg, labelHead);
     	    }
     	    break;
         //arg1, arg3 are registers, arg2 is immediate
@@ -367,41 +414,83 @@ int correctArg(int instr, int argNum, char* arg){
     	        return strToReg(arg);
     	    }
     	    else{
-    	        return strToImm(arg);
+    	        return strToImm(arg, labelHead);
     	    }
     	    break;
     	case 9 :	// j
     	case 10 :	// jal
-    		return strToImm(arg);
+    		return strToImm(arg, labelHead);
     		break;
+    	//beq and bne require a relative address, not absolute
+    	case 12 :	// beq
+    	case 13 :	// bne
+    	    if(argNum == 1 || argNum == 2){
+    	        return strToReg(arg);
+    	    }
+    	    else{
+    	        return strToImm(arg, labelHead) - instrNum;
+    	    }
+    	    break;
     	default:
+    	    printf("Error: instruction %i not valid.",instr);
+    	    return 999;
     		break;
-    	
     }
 }
+/*
+struct MIPSemulator{
+    if_id;
+    id_ex;
+    ex_mem;
+    mem_wb;
+    int* regFile;
+    
+}
+MIPSemulatorStep(MIPSemulator* emulator){
+    //first make it w/o hazard detection
+    MIPSemulator_writeBack();
+    MIPSemulator_memory();
+    MIPSemulator_execute();
+    MIPSemulator_decode();
+    MIPSemulator_fetch();
+}
+
+MIPSemulator_fetch(MIPSemulator* this){
+    this->if_id = getInstruction(programCounter);
+    programCounter++;
+}
+
+MIPSemulator_decode(MIPSemulator* this){
+    //get arguments from registers, including branch targets
+    reg_ctrl = if_id stuff;
+    id_ex->arg1 = regFile[if_id->regarg1];
+    //etc.
+}
+MIPSemulator_execute(MIPSemulator* this){
+    //do computation based on things in id_ex;
+}
+
+//write results to register file
+MIPSemulator_writeBack(MIPSemulator* emulator){
+    emulator->regFile[mem_wb->target] = mem_wb->data;
+}
+
+//access memory
+MIPSemulator_memory(){
+    //stuff
+    mem_wb = morestuff;
+}
+    */
+
 int main(int argc, char* argv[]){
-
-    typedef struct labelList{
-        struct labelList *next;
-        char *data;
-        int lineNum;
-    } labelList;
-
     FILE * asmFile;
     FILE * script;
-    char fileName[100];
     char *line = malloc(100);
     char *label = malloc(100);
     char *temp = label;
     char *word = temp;
-    char *r = malloc(6);
-    labelList *head = NULL;
-    labelList *cur;
-    int isLabel = 0;
+    labelList* labelHead = NULL;
     int lineNum = -1;
-    int jLine = -1;
-    int labeled = 0;
-    char *addNull;
     char instr = 0;
     int i = 0;
     int maxLineNum = 0;
@@ -421,7 +510,47 @@ int main(int argc, char* argv[]){
         perror ("Error opening file\n");
         return 1;
     }
+    //parse labels
+    //each label consists of 2 parts:
+    //  A label name
+    //  the instruction number the label is at
+    int instructionNum = 0;
     while(fgets(line, 100, asmFile)){
+        char* colonAddr;
+        stripComments(line);
+        //is there a label on this line?
+        if(colonAddr = strchr(line, ':')){
+            //if yes, add the label to the list.
+            labelList* newLabel;
+            int labelSize = 0;
+            char* labelChar = colonAddr - 1;
+            //get size and beginning of label string
+            while(isalnum(*labelChar) && labelChar >= line){
+                labelSize++;
+                labelChar--;
+            }
+            //initialize new label
+            newLabel = malloc(sizeof(*newLabel));
+            newLabel->data = malloc(sizeof(char) * labelSize + 1);
+            strncpy(newLabel->data, labelChar + 1, labelSize);
+            newLabel->data[labelSize] = '\0';
+            newLabel->lineNum = instructionNum;
+            //NOTE: labels pushed in order, so
+            // last label encountered = first label in list.
+            newLabel->next = labelHead;
+            labelHead = newLabel;
+        }
+        //is there an instruction on this line?
+        //(actually just checks to see that there is SOMETHING that isn't a
+        //label, comment, whitespace, or punctuation)
+        stripCommentsAndLabels(line);
+        if(strspn(line, WHITESPACE_AND_PUNCTUATION) != strlen(line)){
+            //something there
+            instructionNum++;
+        }
+    }
+            
+     /*       
         word = strtok(line, ", 	");
         if(*word != '#' && *word != '\n'){
             lineNum++;
@@ -450,30 +579,30 @@ int main(int argc, char* argv[]){
                 temp++;
             }
         }while(word = strtok(NULL, ",	 "));
-    }
+    }*/
 
-    rewind(asmFile);
-maxLineNum = lineNum;
+    rewind(asmFile);    
+    maxLineNum = instructionNum - 1;
     lineNum = -1;
 
 
 
-//Transfer instructions into memory
+    //Transfer instructions into memory
     while(fgets(line, 100, asmFile)){
     	stripCommentsAndLabels(line);
-        word = strtok(line, "$,(): \t");
+        word = strtok(line, WHITESPACE_AND_PUNCTUATION);
+        //if there is an instruciton on this line
         if(word != NULL){
         	int i = 0;
-        	//there is an instruciton on this line
         	lineNum++;
         	arr[lineNum][i] = instrToNum(word);
         	i++;
-        	while(word = strtok(NULL, "$,(): \t")){
-        		arr[lineNum][i] = correctArg(arr[lineNum][0], i, word);
+        	while(word = strtok(NULL, WHITESPACE_AND_PUNCTUATION)){
+        		arr[lineNum][i] = correctArg(lineNum, arr[lineNum][0], i, word, labelHead);
         		i++;
         	}
         }
-        //word == null, do nothing
+        //else word == null, do nothing
     }
  /*           		
           		
@@ -640,123 +769,127 @@ maxLineNum = lineNum;
     }*/
     fclose(asmFile);
    
-    if(argv[2] != NULL){
+    if(argc > 2){
     	script = fopen(argv[2], "r");
     } 
     while(line){
-	printf("mips> ");
-	if(argv[2] != NULL){
-		fgets(line, 100, script);
-		printf("%s", line);
-	}
-	else{
-		fgets(line, 100, stdin);
-	}
-	instr = *strtok(line, " ");
-	switch(instr){
-	case 'h' :
-		printf("\nh = show help\n");
-		printf("d = dump register state\n");
-		printf("p = show pipeline registers\n");
-		printf("s = step through a single clock cycle step (i.e. simulate 1 cycle and stop)\n");
-		printf("s num = step through num clock cycles\n");
-		printf("r = run until the program ends and display timing summary\n");
-		printf("m num1 num2 = display data memory from location num1 to num2\n");
-		printf("c = clear all registers, memory, and the program counter to 0\n");
-		printf("q = exit the program\n");
-		break;
-            case 'd' :
-		printf("\npc = %d\n", pc);
-		printf("$0 = %d 		$v0 = %d		$v1 = %d		$a0 = %d\n", reg[0], reg[1], reg[2], reg[3]);
-		printf("$a1 = %d		$a2 = %d		$a3 = %d		$t0 = %d\n", reg[4], reg[5], reg[6], reg[7]);
-		printf("$t1 = %d		$t2 = %d		$t3 = %d		$t4 = %d\n", reg[8], reg[9], reg[10], reg[11]);
-		printf("$t5 = %d		$t6 = %d		$t7 = %d		$s0 = %d\n", reg[12], reg[13], reg[14], reg[15]);
-		printf("$s1 = %d		$s2 = %d		$s3 = %d		$s4 = %d\n", reg[16], reg[17], reg[18], reg[19]);
-		printf("$s5 = %d		$s6 = %d		$s7 = %d		$t8 = %d\n", reg[20], reg[21], reg[22], reg[23]);
-		printf("$t9 = %d		$sp = %d		$ra = %d		\n", reg[24], reg[25], reg[26]);
-		break;
-            case 's' :
-
-		label = strtok(NULL, " ");
-		if(label == NULL){
-			i = 1;
-		}
-		else{
-			i = atoi(label);
-		}	
-		while(i--){
-			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
-			pc++;
-
-			if (!detectStall(sim_pc - 1, id_exe)) {
-				mem_wb = exe_mem;
-				exe_mem = id_exe;
-				id_exe = if_id;
-				getInstr(arr[sim_pc][0], &if_id);
-				sim_pc++;
-			}
-			else {
-				mem_wb = exe_mem;
-				exe_mem = id_exe;
-				id_exe = "stall";
-			}
-			cycles++;
-			if (i == 0) {
-				printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
-				printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
-			}
-		}
-                break;
-	    case 'p' :
-		printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
-		printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
-		break;
-            case 'r' :
-		while(pc != maxLineNum + 1){
-			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
-			pc++;
-		}
-		while (sim_pc != maxLineNum + 1) {
-			if (!detectStall(sim_pc - 1, id_exe)) {
-				mem_wb = exe_mem;
-				exe_mem = id_exe;
-				id_exe = if_id;
-				getInstr(arr[sim_pc][0], &if_id);
-				sim_pc++;
-			}
-			else {
-				mem_wb = exe_mem;
-				exe_mem = id_exe;
-				id_exe = "stall";
-			}
-			cycles++;
-		}
-		printf("\nProgram complete\n");
-		printf("CPI = %0.3lf	Cycles = %d	Instructions = %d\n\n", (double)(cycles + 4)/num_instr, cycles + 4, num_instr);
-                break;
-            case 'm' :
-		mStart = atoi(strtok(NULL, " "));
-		mEnd = atoi(strtok(NULL, " "));
-                for(i = mStart; i<=mEnd; i++){
-			printf("[%d] = %d\n", i, dataMem[i]);
-		}
-		break;
-            case 'c' :
-		pc = 0;
-   		for(i=0;i<8192;i++){
-			dataMem[i] = 0;
+        char* commandArg;
+        int numLines;
+    	printf("mips> ");
+    	if(argc > 2){
+    		fgets(line, 100, script);
+    		printf("%s", line);
+    	}
+    	else{
+    		fgets(line, 100, stdin);
+    	}
+    	instr = *strtok(line, " ");
+    	switch(instr){
+    	case 'h' :
+    		printf("\nh = show help\n");
+    		printf("d = dump register state\n");
+    		printf("p = show pipeline registers\n");
+    		printf("s = step through a single clock cycle step (i.e. simulate 1 cycle and stop)\n");
+    		printf("s num = step through num clock cycles\n");
+    		printf("r = run until the program ends and display timing summary\n");
+    		printf("m num1 num2 = display data memory from location num1 to num2\n");
+    		printf("c = clear all registers, memory, and the program counter to 0\n");
+    		printf("q = exit the program\n");
+    		break;
+        case 'd' :
+    		printf("\npc = %d\n", pc);
+    		printf("$0 = %d 		$v0 = %d		$v1 = %d		$a0 = %d\n", reg[0], reg[1], reg[2], reg[3]);
+    		printf("$a1 = %d		$a2 = %d		$a3 = %d		$t0 = %d\n", reg[4], reg[5], reg[6], reg[7]);
+    		printf("$t1 = %d		$t2 = %d		$t3 = %d		$t4 = %d\n", reg[8], reg[9], reg[10], reg[11]);
+    		printf("$t5 = %d		$t6 = %d		$t7 = %d		$s0 = %d\n", reg[12], reg[13], reg[14], reg[15]);
+    		printf("$s1 = %d		$s2 = %d		$s3 = %d		$s4 = %d\n", reg[16], reg[17], reg[18], reg[19]);
+    		printf("$s5 = %d		$s6 = %d		$s7 = %d		$t8 = %d\n", reg[20], reg[21], reg[22], reg[23]);
+    		printf("$t9 = %d		$sp = %d		$ra = %d		\n", reg[24], reg[25], reg[26]);
+    		break;
+        case 's' :
+            //get number of instructions to execute
+    		commandArg = strtok(NULL, " ");
+    		if(commandArg == NULL){
+    			numLines = 1;
     		}
-    		for(i=0;i<27;i++){
-        		reg[i] = 0;
+    		else{
+    			numLines = atoi(commandArg);
     		}
-		printf("	Simulator reset\n");	
-		break;
-            case 'q' :
-                fclose(script);
-                return 0;
-            default:
-                break;
-	}
+    		//execute the instructions
+    		while(numLines--){
+    			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
+    			pc++;
+    
+    			if (!detectStall(sim_pc - 1, id_exe)) {
+    				mem_wb = exe_mem;
+    				exe_mem = id_exe;
+    				id_exe = if_id;
+    				if_id = numToInstr(arr[sim_pc][0]);
+    				sim_pc++;
+    			}
+    			else {
+    				mem_wb = exe_mem;
+    				exe_mem = id_exe;
+    				id_exe = "stall";
+    			}
+    			cycles++;
+    			if (i == 0) {
+    				printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
+    				printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
+    			}
+    		}
+            break;
+    	case 'p' :
+    		printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
+    		printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
+    		break;
+        case 'r' :
+    		while(pc != maxLineNum + 1){
+    			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
+    			pc++;
+    		}
+    		while (sim_pc != maxLineNum + 1) {
+    			if (!detectStall(sim_pc - 1, id_exe)) {
+    				mem_wb = exe_mem;
+    				exe_mem = id_exe;
+    				id_exe = if_id;
+    				if_id = numToInstr(arr[sim_pc][0]);
+    				sim_pc++;
+    			}
+    			else {
+    				mem_wb = exe_mem;
+    				exe_mem = id_exe;
+    				id_exe = "stall";
+    			}
+    			cycles++;
+    		}
+    		printf("\nProgram complete\n");
+    		printf("CPI = %0.3lf\tCycles = %d\tInstructions = %d\n\n", (double)(cycles + 4)/num_instr, cycles + 4, num_instr);
+            break;
+        case 'm' :
+    		mStart = atoi(strtok(NULL, " "));
+    		mEnd = atoi(strtok(NULL, " "));
+                    for(i = mStart; i<=mEnd; i++){
+    			printf("[%d] = %d\n", i, dataMem[i]);
+    		}
+    		break;
+        case 'c' :
+    		pc = 0;
+       		for(i=0;i<8192;i++){
+    			dataMem[i] = 0;
+        		}
+        		for(i=0;i<27;i++){
+            		reg[i] = 0;
+        		}
+    		printf("\tSimulator reset\n");	
+    		break;
+        case 'q' :
+            fclose(script);
+            return 0;
+            break;
+        default:
+            break;
+    	}
     }
     fclose(script);
     return 0;
