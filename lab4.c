@@ -457,6 +457,150 @@ struct MIPSemulator{
     int* regFile;
     
 }
+works for ADD AND LW ONLY
+fields needed for input to:*/
+typedef struct {
+    //control:
+    int memToReg;
+    //data:
+    int address;
+    int dataMEM;
+    int dataALU;
+}WriteBackInput;
+
+typedef struct{
+    //control
+    int writeEnable;
+    int readEnable;
+    //data
+    int address;
+    int data;
+}MemoryInput;
+
+typedef struct{
+    //control
+    int ALUOp;
+    int ALUSrc;
+    int memReadEnable;
+    int memWriteEnable;
+    //data
+    int dataR1;
+    int dataR2;
+    int dataSExt;
+}ExecuteInput;
+
+typedef struct{
+    int instruction;
+    int arg1;
+    int arg2;
+    int arg3;
+}DecodeInput;
+
+typedef struct{
+    int pc;
+}FetchInput;
+/*
+ADD:
+fetch:
+    decode->location1 = fetch->rb;
+    decode->location2 = fetch->rc;
+    writeback->location = fetch->ra;
+decode:
+    execute->data1 = register(decode->location1);
+    execute->data2 = register(decode->location2);
+    writeback->location = writeback->location;
+execute:
+    memory->address = ALUresult(execute->data1, execute->data2, ADD);
+    writeback->location = writeback->location;
+memory:
+    writeback->location = writeback->location;
+    writeback->data = memory->address;
+    
+LW:
+fetch:
+decode:
+execute:
+    memory->address = ALUresult(execute->data1, execute->data2, ADD);
+    memory->data = who cares?
+memory:
+    writeback->location = writeback->location;
+    writeback->data = mem_access(memory->address);
+*/
+
+//returns a if which==0, b otherwise
+inline int mux(int a, int b, int which){
+    return which ? b : a;
+}
+
+//ALUOps:
+//0: add
+//1: 
+int getALUOp(int instruction){
+    switch(instruction){
+    case 0://add
+        return 0;//add
+        break;
+    default:
+        return 999;
+        break;
+    }
+}
+//ALUSrc:
+//0: from register 2
+//1: from dataSExt
+int getALUSrc(int instruction){
+    switch(instruction){
+    case 0://add
+        return 0;//from register2
+        break;
+    default:
+        return 999;
+        break;
+    }
+}
+            
+void writebackPhase(WriteBackInput* writeback){
+    int writedata = mux(writeback->dataMem, writeback->dataALU, writeback->memToReg);
+    registerFile[writeback->address] = writedata;
+}
+
+void memoryPhase(MemoryInput* memory, WriteBackInput* writeback){
+    writeback->dataALU = memory->address;
+    writeback->dataMEM = mux(dataMem[memory->address], 0, memory->readEnable);
+    writeback->memToReg = memory->readEnable;
+    
+    writeback->address = memory->address;
+}
+
+void executePhase(ExecuteInput* execute, MemoryInput* memory){
+    int ALUInput2 = mux(execute->dataR2, execute->dataSExt, execute->ALUSrc);
+    memory->address = ALUresult(execute->dataR1, ALUInput2, execute->ALUOp);
+    memory->data = 0;//implement for other instructions
+    
+    memory->readEnable = execute->memReadEnable;
+    memory->writeEnable = execute->memWriteEnable;
+}
+
+void decodePhase(DecodeInput* decode, ExecuteInput* execute){
+    //here is where it gets messy.
+    
+    execute->dataR1 = regFile[decode->arg1];
+    execute->dataR2 = regFile[decode->arg2];
+    execute->dataSExt = decode->arg2;//needs work
+    
+    execute->ALUOp = getALUOp(decode->instruction);
+    execute->ALUSrc = getALUSrc(decode->instruction);
+}
+
+void fetchPhase(FetchInput* fetch, DecodeInput* decode){
+    decode->instruction = arr[fetch->pc][0];
+    decode->arg1 = arr[fetch->pc][1];
+    decode->arg2 = arr[fetch->pc][2];
+    decode->arg3 = arr[fetch->pc][3];
+    fetch->pc++;
+}
+
+/*
 MIPSemulatorStep(MIPSemulator* emulator){
     //first make it w/o hazard detection
     MIPSemulator_writeBack();
@@ -482,8 +626,8 @@ MIPSemulator_execute(MIPSemulator* this){
 }
 
 //write results to register file
-MIPSemulator_writeBack(MIPSemulator* emulator){
-    emulator->regFile[mem_wb->target] = mem_wb->data;
+MIPSemulator_writeBack(MIPSemulator* this){
+    this->regFile[mem_wb->target] = mem_wb->data;
 }
 
 //access memory
@@ -688,10 +832,12 @@ int main(int argc, char* argv[]){
                             if_id = "squash";
                         }
                     }
+                    else{
                     mem_wb = exe_mem;
                     exe_mem = id_exe;
                     id_exe = if_id;
                     if_id = numToInstr(arr[sim_pc][0]);
+                    }
                     sim_pc++;
                 }
                 else {
