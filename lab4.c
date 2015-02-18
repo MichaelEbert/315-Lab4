@@ -700,7 +700,7 @@ int main(int argc, char* argv[]){
                     id_exe = "stall";
                 }
                 cycles++;
-                if (i == 0) {
+                if (numLines == 0) {
                     printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
                     printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
                 }
@@ -757,7 +757,7 @@ int main(int argc, char* argv[]){
             break;
     	}
     }
-    fclose(script);
+    //fclose(script);
     return 0;
 }
 
