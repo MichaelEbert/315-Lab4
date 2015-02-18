@@ -439,7 +439,7 @@ int correctArg(int instrNum, int instr, int argNum, char* arg, labelList* labelH
     	        return strToReg(arg);
     	    }
     	    else{
-    	        return strToImm(arg, labelHead) - instrNum;
+    	        return strToImm(arg, labelHead) - (instrNum + 1);
     	    }
     	    break;
     	default:
@@ -711,11 +711,11 @@ int main(int argc, char* argv[]){
     		printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
     		break;
         case 'r' :
-    		while(pc != maxLineNum + 1){
+    		while(pc != maxLineNum){
     			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
     			pc++;
     		}
-    		while (sim_pc != maxLineNum + 1) {
+    		while (sim_pc != maxLineNum) {
     			if (!detectStall(sim_pc - 1, id_exe)) {
     				mem_wb = exe_mem;
     				exe_mem = id_exe;
