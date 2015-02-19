@@ -664,41 +664,49 @@ int main(int argc, char* argv[]){
     			numLines = atoi(commandArg);
     		}
     		//execute the instructions
+    		static int oldPC = 0;
     		while(numLines--){
                 int unbranchedPC = pc + 1;
     			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
     			pc++;
     
     			if (!detectStall(sim_pc - 1, id_exe)) {
-                    if(unbranchedPC != pc){
+                    if(oldPC != sim_pc && sim_pc){
                         //branch taken, so squash
-                        if(arr[pc][0] == instrToNum("j") ||
-                        arr[pc][0] == instrToNum("jr") ||
-                        arr[pc][0] == instrToNum("jal")){
+                        if(arr[oldPC][0] == instrToNum("j") ||
+                        arr[oldPC][0] == instrToNum("jr") ||
+                        arr[oldPC][0] == instrToNum("jal")){
+			    sim_pc = arr[oldPC][1];
+			    printf("oldPC = %d\n", oldPC);
+			    printf("sim_pc = %d\n", sim_pc);
                             mem_wb = exe_mem;
                             exe_mem = id_exe;
                             id_exe = if_id;
                             if_id = "squash";
                         }
-                        if(arr[pc][0] == instrToNum("beq") ||
-                        arr[pc][0] == instrToNum("bne")){
+                        if(arr[unbranchedPC - 1][0] == instrToNum("beq") ||
+                        arr[unbranchedPC - 1][0] == instrToNum("bne")){
                             mem_wb = exe_mem;
                             exe_mem = "squash";
                             id_exe = "squash";
                             if_id = "squash";
                         }
+			//sim_pc++;
                     }
-                    mem_wb = exe_mem;
-                    exe_mem = id_exe;
-                    id_exe = if_id;
-                    if_id = numToInstr(arr[sim_pc][0]);
-                    sim_pc++;
+		    else {
+                    	mem_wb = exe_mem;
+                    	exe_mem = id_exe;
+                 	id_exe = if_id;
+                 	if_id = numToInstr(arr[sim_pc][0]);
+                   	sim_pc++;
+		    }
                 }
                 else {
                     mem_wb = exe_mem;
                     exe_mem = id_exe;
                     id_exe = "stall";
                 }
+		oldPC = unbranchedPC;
                 cycles++;
                 if (numLines == 0) {
                     printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
