@@ -1,2 +1,2 @@
 default:
-	gcc -o lab3 lab3.c
+	gcc lab4.c -o lab4 -g

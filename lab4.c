@@ -657,53 +657,54 @@ int main(int argc, char* argv[]){
     		//execute the instructions
     		static int oldPC = 0;
     		while(numLines--){
-                int unbranchedPC = pc + 1;
-    			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
-    			pc++;
-    
-    			if (!detectStall(sim_pc - 1, id_exe)) {
-                    if(oldPC != sim_pc && sim_pc){
-                        //branch taken, so squash
-                        if(arr[oldPC][0] == instrToNum("j") ||
-                        arr[oldPC][0] == instrToNum("jr") ||
-                        arr[oldPC][0] == instrToNum("jal")){
-			    sim_pc = arr[oldPC][1];
-			    printf("oldPC = %d\n", oldPC);
-			    printf("sim_pc = %d\n", sim_pc);
-                            mem_wb = exe_mem;
-                            exe_mem = id_exe;
-                            id_exe = if_id;
-                            if_id = "squash";
-                        }
-                        if(arr[unbranchedPC - 1][0] == instrToNum("beq") ||
-                        arr[unbranchedPC - 1][0] == instrToNum("bne")){
+                int unbranchedPC = pc;
+                //if id_exe != stall and if_id != squash
+                if(strcmp(id_exe, "stall") && strcmp(if_id, "squash")){
+                    execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
+                    pc++;
+                    unbranchedPC++;
+                }
+                //if lw command(only one that stalls) and it is a stall
+                if (detectStall(sim_pc - 1, id_exe)) {
+                    mem_wb = exe_mem;
+                    exe_mem = id_exe;
+                    id_exe = "stall";
+                }
+                else{
+                    if(unbranchedPC != pc){
+                        //if beq/bne, squash when you get to exe/mem
+                        if(instrToNum(exe_mem) == instrToNum("beq")
+                        || instrToNum(exe_mem) == instrToNum("bne")){
                             mem_wb = exe_mem;
                             exe_mem = "squash";
                             id_exe = "squash";
                             if_id = "squash";
                         }
-			//sim_pc++;
+                        else{
+                            //if jump taken, squash next instruction
+                            if(instrToNum(if_id) == instrToNum("j")
+                            || instrToNum(if_id)  == instrToNum("jr")
+                            || instrToNum(if_id)  == instrToNum("jal")){
+                                mem_wb = exe_mem;
+                                exe_mem = id_exe;
+                                id_exe = if_id;
+                                if_id = "squash";
+                            }
+                        }
                     }
-		    else {
-                    	mem_wb = exe_mem;
-                    	exe_mem = id_exe;
-                 	id_exe = if_id;
-                 	if_id = numToInstr(arr[sim_pc][0]);
-                   	sim_pc++;
-		    }
+                    else{
+                        //nothing funky happens.
+                        mem_wb = exe_mem;
+                        exe_mem = id_exe;
+                        id_exe = if_id;
+                        if_id = numToInstr(arr[pc][0]);
+                    }
                 }
-                else {
-                    mem_wb = exe_mem;
-                    exe_mem = id_exe;
-                    id_exe = "stall";
-                }
-		oldPC = unbranchedPC;
+                		oldPC = unbranchedPC;
                 cycles++;
-                if (numLines == 0) {
-                    printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
-                    printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
-                }
-            }
+            }//end of "while(numlines--)" condition
+            printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
+            printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
             break;
     	case 'p' :
     		printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
