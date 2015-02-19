@@ -384,15 +384,6 @@ int detectStall (int pcount, char *idexe) {
 	}
 	return stall;
 }
-/*
-//EX hazard
-    if((incomingInstruction.input1 == otherInstruction.output
-    || incomingInstruction.input2 == otherInstruction.output)
-    && otherInstrucion.output != register0){
-        //forward instruction - implement later
-    }
-    //memory hazard also does forwarding
-    */
     
 
 
