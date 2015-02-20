@@ -19,6 +19,12 @@ typedef struct labelList{
     int lineNum;
 } labelList;
 
+typedef struct{
+    char* instruction;
+    int branchTaken;
+    int branchLocation;
+}interstageRegister;
+
 int reg[27];
 int dataMem[8192];
 int arr[100][4];
@@ -26,11 +32,10 @@ int pc = 0;
 int sim_pc = 0;
 int num_instr = 0;
 int cycles = 0;
-char *if_id = "empty";
-char *id_exe = "empty";
-char *exe_mem = "empty";
-char *mem_wb = "empty";
-
+interstageRegister if_id = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
+interstageRegister id_exe = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
+interstageRegister exe_mem = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
+interstageRegister mem_wb = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
 void stripComments(char* line){
     char* commentPos;
     commentPos = strchr(line, '#');
@@ -40,7 +45,6 @@ void stripComments(char* line){
 	*commentPos = '\0';
 	return;
 }
-	
 
 void stripCommentsAndLabels(char* line){
 	char *colonAddr, *strippedLine;
@@ -332,18 +336,18 @@ void execute(int instr, int r1, int r2, int r3){
 			break;
 		case 10 :	// jal
 			reg[26] = pc + 1;
-			pc = r1 - 1;
+			pc = r1;
 			break;
 		case 11 :	// jr
-			pc = reg[r1] - 1;
+			pc = reg[r1];
 			break;
 		case 12 :	// beq
 			if(reg[r1] == reg[r2])
-				pc = pc + r3 - 1;
+				pc = pc + r3 + 1;
 			break;
 		case 13 :	// bne
 			if(reg[r1] != reg[r2])
-				pc = pc + r3 - 1;
+				pc = pc + r3 + 1;
 			break;
 		default:
 			break;
@@ -352,6 +356,31 @@ void execute(int instr, int r1, int r2, int r3){
 	num_instr++;
 }
 
+void fakeexecute(int instr, int r1, int r2, int r3){
+	switch(instr){
+		case 9 :	// j
+			pc = r1;
+			break;
+		case 10 :	// jal
+			//reg[26] = pc + 1;
+			pc = r1;
+			break;
+		case 11 :	// jr
+			pc = reg[r1];
+			break;
+		case 12 :	// beq
+			if(reg[r1] == reg[r2])
+				pc = pc + r3 + 1;
+			break;
+		case 13 :	// bne
+			if(reg[r1] != reg[r2])
+				pc = pc + r3 + 1;
+			break;
+		default:
+			break;
+		
+	}
+}
 int detectStall (int pcount, char *idexe) {
 	int lwReg;
 	int stall = 0;
@@ -384,15 +413,6 @@ int detectStall (int pcount, char *idexe) {
 	}
 	return stall;
 }
-/*
-//EX hazard
-    if((incomingInstruction.input1 == otherInstruction.output
-    || incomingInstruction.input2 == otherInstruction.output)
-    && otherInstrucion.output != register0){
-        //forward instruction - implement later
-    }
-    //memory hazard also does forwarding
-    */
     
 
 
@@ -439,7 +459,15 @@ int correctArg(int instrNum, int instr, int argNum, char* arg, labelList* labelH
     	        return strToReg(arg);
     	    }
     	    else{
-    	        return strToImm(arg, labelHead) - (instrNum + 1);
+                
+                int labelAddr = strToLabel(arg, labelHead);
+                //if arg is a label
+                if(labelAddr != -1){
+                    return labelAddr - ( instrNum + 1 );
+                }
+                else{//is not a label, is a relative
+                    return atoi(arg);
+                }
     	    }
     	    break;
     	default:
@@ -457,150 +485,6 @@ struct MIPSemulator{
     int* regFile;
     
 }
-works for ADD AND LW ONLY
-fields needed for input to:*/
-typedef struct {
-    //control:
-    int memToReg;
-    //data:
-    int address;
-    int dataMEM;
-    int dataALU;
-}WriteBackInput;
-
-typedef struct{
-    //control
-    int writeEnable;
-    int readEnable;
-    //data
-    int address;
-    int data;
-}MemoryInput;
-
-typedef struct{
-    //control
-    int ALUOp;
-    int ALUSrc;
-    int memReadEnable;
-    int memWriteEnable;
-    //data
-    int dataR1;
-    int dataR2;
-    int dataSExt;
-}ExecuteInput;
-
-typedef struct{
-    int instruction;
-    int arg1;
-    int arg2;
-    int arg3;
-}DecodeInput;
-
-typedef struct{
-    int pc;
-}FetchInput;
-/*
-ADD:
-fetch:
-    decode->location1 = fetch->rb;
-    decode->location2 = fetch->rc;
-    writeback->location = fetch->ra;
-decode:
-    execute->data1 = register(decode->location1);
-    execute->data2 = register(decode->location2);
-    writeback->location = writeback->location;
-execute:
-    memory->address = ALUresult(execute->data1, execute->data2, ADD);
-    writeback->location = writeback->location;
-memory:
-    writeback->location = writeback->location;
-    writeback->data = memory->address;
-    
-LW:
-fetch:
-decode:
-execute:
-    memory->address = ALUresult(execute->data1, execute->data2, ADD);
-    memory->data = who cares?
-memory:
-    writeback->location = writeback->location;
-    writeback->data = mem_access(memory->address);
-*/
-
-//returns a if which==0, b otherwise
-inline int mux(int a, int b, int which){
-    return which ? b : a;
-}
-
-//ALUOps:
-//0: add
-//1: 
-int getALUOp(int instruction){
-    switch(instruction){
-    case 0://add
-        return 0;//add
-        break;
-    default:
-        return 999;
-        break;
-    }
-}
-//ALUSrc:
-//0: from register 2
-//1: from dataSExt
-int getALUSrc(int instruction){
-    switch(instruction){
-    case 0://add
-        return 0;//from register2
-        break;
-    default:
-        return 999;
-        break;
-    }
-}
-            
-void writebackPhase(WriteBackInput* writeback){
-    int writedata = mux(writeback->dataMem, writeback->dataALU, writeback->memToReg);
-    registerFile[writeback->address] = writedata;
-}
-
-void memoryPhase(MemoryInput* memory, WriteBackInput* writeback){
-    writeback->dataALU = memory->address;
-    writeback->dataMEM = mux(dataMem[memory->address], 0, memory->readEnable);
-    writeback->memToReg = memory->readEnable;
-    
-    writeback->address = memory->address;
-}
-
-void executePhase(ExecuteInput* execute, MemoryInput* memory){
-    int ALUInput2 = mux(execute->dataR2, execute->dataSExt, execute->ALUSrc);
-    memory->address = ALUresult(execute->dataR1, ALUInput2, execute->ALUOp);
-    memory->data = 0;//implement for other instructions
-    
-    memory->readEnable = execute->memReadEnable;
-    memory->writeEnable = execute->memWriteEnable;
-}
-
-void decodePhase(DecodeInput* decode, ExecuteInput* execute){
-    //here is where it gets messy.
-    
-    execute->dataR1 = regFile[decode->arg1];
-    execute->dataR2 = regFile[decode->arg2];
-    execute->dataSExt = decode->arg2;//needs work
-    
-    execute->ALUOp = getALUOp(decode->instruction);
-    execute->ALUSrc = getALUSrc(decode->instruction);
-}
-
-void fetchPhase(FetchInput* fetch, DecodeInput* decode){
-    decode->instruction = arr[fetch->pc][0];
-    decode->arg1 = arr[fetch->pc][1];
-    decode->arg2 = arr[fetch->pc][2];
-    decode->arg3 = arr[fetch->pc][3];
-    fetch->pc++;
-}
-
-/*
 MIPSemulatorStep(MIPSemulator* emulator){
     //first make it w/o hazard detection
     MIPSemulator_writeBack();
@@ -626,8 +510,8 @@ MIPSemulator_execute(MIPSemulator* this){
 }
 
 //write results to register file
-MIPSemulator_writeBack(MIPSemulator* this){
-    this->regFile[mem_wb->target] = mem_wb->data;
+MIPSemulator_writeBack(MIPSemulator* emulator){
+    emulator->regFile[mem_wb->target] = mem_wb->data;
 }
 
 //access memory
@@ -636,6 +520,99 @@ MIPSemulator_memory(){
     mem_wb = morestuff;
 }
     */
+    void writebackStage(void){
+    mem_wb.instruction = "empty";
+    return;
+}
+
+void memoryStage(void){
+    //has the beq squash
+    if(!strcmp(mem_wb.instruction, "empty")){
+        mem_wb.instruction = exe_mem.instruction;
+        mem_wb.branchTaken = exe_mem.branchTaken;
+        mem_wb.branchLocation = exe_mem.branchLocation;
+        if(exe_mem.branchTaken == 1
+        && (!strcmp(exe_mem.instruction, "beq")
+         || !strcmp(exe_mem.instruction, "bne"))){
+            exe_mem.instruction = "squash";
+            id_exe.instruction = "squash";
+            if_id.instruction = "squash";
+            pc = exe_mem.branchLocation;
+        }
+        else{
+            exe_mem.instruction = "empty";
+        }
+    }
+}
+void executeStage(void){
+    //this stage has the LW stall
+    //if exe_mem register is free
+    if(!strcmp(exe_mem.instruction, "empty")){
+        exe_mem.instruction = id_exe.instruction;
+        exe_mem.branchTaken = id_exe.branchTaken;
+        exe_mem.branchLocation = id_exe.branchLocation;
+
+        //need to figure out how detectStall works, feed in right parameters
+        //I do know that detectStall checks for "lw", so no need for that here
+        if(detectStall(pc - 1,id_exe.instruction)){
+            id_exe.instruction = "stall";
+        }
+        else{
+            id_exe.instruction = "empty";
+        }
+    }
+}
+
+        
+void decodeStage(void){
+    //if id_exe register is free
+    if(!strcmp(id_exe.instruction, "empty")){
+        id_exe.instruction = if_id.instruction;
+        id_exe.branchTaken = if_id.branchTaken;
+        id_exe.branchLocation = if_id.branchLocation;
+        //j or jal or jr (add later) AND jumped
+        if(if_id.branchTaken == 1
+        && (!strcmp(if_id.instruction, "j")
+         || !strcmp(if_id.instruction, "jr")
+         || !strcmp(if_id.instruction, "jal"))){
+            if_id.instruction = "squash";
+            pc = if_id.branchLocation;
+        }
+        else{
+            if_id.instruction = "empty";
+        }
+    }
+}
+
+void fetchStage(void){
+    if(!strcmp(if_id.instruction, "empty")){
+        int unbranchedPC = pc;
+        //fetch new instruction at PC
+        if_id.instruction = numToInstr(arr[pc][0]);
+        if((exe_mem.branchTaken == 1
+        && (!strcmp(exe_mem.instruction, "beq")
+         || !strcmp(exe_mem.instruction, "bne")))
+        ||(id_exe.branchTaken == 1
+        && ((!strcmp(id_exe.instruction, "beq")
+         || !strcmp(id_exe.instruction, "bne"))))){
+             fakeexecute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
+         }
+         else{
+            execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
+        }
+        //if branch taken
+        if(unbranchedPC != pc){
+            if_id.branchTaken = 1;
+            if_id.branchLocation = pc;
+            pc = unbranchedPC;
+        }
+        else{
+            if_id.branchTaken = 0;
+            if_id.branchLocation = 0;
+        }
+        pc++;
+    }
+}
 
 int main(int argc, char* argv[]){
     FILE * asmFile;
@@ -809,71 +786,27 @@ int main(int argc, char* argv[]){
     		}
     		//execute the instructions
     		while(numLines--){
-                int unbranchedPC = pc + 1;
-    			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
-    			pc++;
-    
-    			if (!detectStall(sim_pc - 1, id_exe)) {
-                    if(unbranchedPC != pc){
-                        //branch taken, so squash
-                        if(arr[pc][0] == instrToNum("j") ||
-                        arr[pc][0] == instrToNum("jr") ||
-                        arr[pc][0] == instrToNum("jal")){
-                            mem_wb = exe_mem;
-                            exe_mem = id_exe;
-                            id_exe = if_id;
-                            if_id = "squash";
-                        }
-                        if(arr[pc][0] == instrToNum("beq") ||
-                        arr[pc][0] == instrToNum("bne")){
-                            mem_wb = exe_mem;
-                            exe_mem = "squash";
-                            id_exe = "squash";
-                            if_id = "squash";
-                        }
-                    }
-                    else{
-                    mem_wb = exe_mem;
-                    exe_mem = id_exe;
-                    id_exe = if_id;
-                    if_id = numToInstr(arr[sim_pc][0]);
-                    }
-                    sim_pc++;
-                }
-                else {
-                    mem_wb = exe_mem;
-                    exe_mem = id_exe;
-                    id_exe = "stall";
-                }
+                writebackStage();
+                memoryStage();
+                executeStage();
+                decodeStage();
+                fetchStage();
                 cycles++;
-                if (numLines == 0) {
-                    printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
-                    printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
-                }
             }
+            printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
+            printf("%d	%s	%s	%s	%s\n\n", pc, if_id.instruction, id_exe.instruction, exe_mem.instruction, mem_wb.instruction);
             break;
     	case 'p' :
     		printf("\npc	if/id	id/exe	exe/mem	mem/wb\n");
-    		printf("%d	%s	%s	%s	%s\n\n", sim_pc, if_id, id_exe, exe_mem, mem_wb);
+    		printf("%d	%s	%s	%s	%s\n\n", pc, if_id.instruction, id_exe.instruction, exe_mem.instruction, mem_wb.instruction);
     		break;
         case 'r' :
-    		while(pc != maxLineNum){
-    			execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
-    			pc++;
-    		}
-    		while (sim_pc != maxLineNum) {
-    			if (!detectStall(sim_pc - 1, id_exe)) {
-    				mem_wb = exe_mem;
-    				exe_mem = id_exe;
-    				id_exe = if_id;
-    				if_id = numToInstr(arr[sim_pc][0]);
-    				sim_pc++;
-    			}
-    			else {
-    				mem_wb = exe_mem;
-    				exe_mem = id_exe;
-    				id_exe = "stall";
-    			}
+    		while (pc != maxLineNum) {
+                writebackStage();
+                memoryStage();
+                executeStage();
+                decodeStage();
+                fetchStage();
     			cycles++;
     		}
     		printf("\nProgram complete\n");
