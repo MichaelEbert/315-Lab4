@@ -356,6 +356,31 @@ void execute(int instr, int r1, int r2, int r3){
 	num_instr++;
 }
 
+void fakeexecute(int instr, int r1, int r2, int r3){
+	switch(instr){
+		case 9 :	// j
+			pc = r1;
+			break;
+		case 10 :	// jal
+			//reg[26] = pc + 1;
+			pc = r1;
+			break;
+		case 11 :	// jr
+			pc = reg[r1];
+			break;
+		case 12 :	// beq
+			if(reg[r1] == reg[r2])
+				pc = pc + r3 + 1;
+			break;
+		case 13 :	// bne
+			if(reg[r1] != reg[r2])
+				pc = pc + r3 + 1;
+			break;
+		default:
+			break;
+		
+	}
+}
 int detectStall (int pcount, char *idexe) {
 	int lwReg;
 	int stall = 0;
@@ -506,9 +531,9 @@ void memoryStage(void){
         mem_wb.instruction = exe_mem.instruction;
         mem_wb.branchTaken = exe_mem.branchTaken;
         mem_wb.branchLocation = exe_mem.branchLocation;
-        //also add in BNE
         if(exe_mem.branchTaken == 1
-        && !strcmp(exe_mem.instruction, "beq")){
+        && (!strcmp(exe_mem.instruction, "beq")
+         || !strcmp(exe_mem.instruction, "bne"))){
             exe_mem.instruction = "squash";
             id_exe.instruction = "squash";
             if_id.instruction = "squash";
@@ -529,7 +554,7 @@ void executeStage(void){
 
         //need to figure out how detectStall works, feed in right parameters
         //I do know that detectStall checks for "lw", so no need for that here
-        if(detectStall(pc,id_exe.instruction)){
+        if(detectStall(pc - 1,id_exe.instruction)){
             id_exe.instruction = "stall";
         }
         else{
@@ -547,7 +572,9 @@ void decodeStage(void){
         id_exe.branchLocation = if_id.branchLocation;
         //j or jal or jr (add later) AND jumped
         if(if_id.branchTaken == 1
-        && !strcmp(if_id.instruction, "j")){
+        && (!strcmp(if_id.instruction, "j")
+         || !strcmp(if_id.instruction, "jr")
+         || !strcmp(if_id.instruction, "jal"))){
             if_id.instruction = "squash";
             pc = if_id.branchLocation;
         }
@@ -562,7 +589,17 @@ void fetchStage(void){
         int unbranchedPC = pc;
         //fetch new instruction at PC
         if_id.instruction = numToInstr(arr[pc][0]);
-        execute(arr[pc - 1][0], arr[pc - 1][1], arr[pc - 1][2], arr[pc - 1][3]);
+        if((exe_mem.branchTaken == 1
+        && (!strcmp(exe_mem.instruction, "beq")
+         || !strcmp(exe_mem.instruction, "bne")))
+        ||(id_exe.branchTaken == 1
+        && ((!strcmp(id_exe.instruction, "beq")
+         || !strcmp(id_exe.instruction, "bne"))))){
+             fakeexecute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
+         }
+         else{
+            execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
+        }
         //if branch taken
         if(unbranchedPC != pc){
             if_id.branchTaken = 1;

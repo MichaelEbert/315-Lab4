@@ -28,7 +28,7 @@ fibonacci:	addi $t0, $0, 3
 		lw $ra, 1($sp)
 		addi $sp, $sp, 3
 		jr $ra
-
+		
 basecase:	addi $v0, $0, 1
 		jr $ra
 
