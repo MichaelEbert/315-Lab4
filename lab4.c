@@ -336,18 +336,18 @@ void execute(int instr, int r1, int r2, int r3){
 			break;
 		case 10 :	// jal
 			reg[26] = pc + 1;
-			pc = r1 - 1;
+			pc = r1;
 			break;
 		case 11 :	// jr
-			pc = reg[r1] - 1;
+			pc = reg[r1];
 			break;
 		case 12 :	// beq
 			if(reg[r1] == reg[r2])
-				pc = pc + r3 - 1;
+				pc = pc + r3 + 1;
 			break;
 		case 13 :	// bne
 			if(reg[r1] != reg[r2])
-				pc = pc + r3 - 1;
+				pc = pc + r3 + 1;
 			break;
 		default:
 			break;
@@ -434,7 +434,15 @@ int correctArg(int instrNum, int instr, int argNum, char* arg, labelList* labelH
     	        return strToReg(arg);
     	    }
     	    else{
-    	        return strToImm(arg, labelHead) - (instrNum + 1);
+                
+                int labelAddr = strToLabel(arg, labelHead);
+                //if arg is a label
+                if(labelAddr != -1){
+                    return labelAddr - ( instrNum + 1 );
+                }
+                else{//is not a label, is a relative
+                    return atoi(arg);
+                }
     	    }
     	    break;
     	default:
@@ -554,11 +562,11 @@ void fetchStage(void){
         int unbranchedPC = pc;
         //fetch new instruction at PC
         if_id.instruction = numToInstr(arr[pc][0]);
-        execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
+        execute(arr[pc - 1][0], arr[pc - 1][1], arr[pc - 1][2], arr[pc - 1][3]);
         //if branch taken
         if(unbranchedPC != pc){
             if_id.branchTaken = 1;
-            if_id.branchLocation = pc + 1;
+            if_id.branchLocation = pc;
             pc = unbranchedPC;
         }
         else{
