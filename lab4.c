@@ -577,7 +577,7 @@ void memoryStage(void){
         mem_wb.branchTaken = exe_mem.branchTaken;
         mem_wb.branchLocation = exe_mem.branchLocation;
         mem_wb.branchCorrect = exe_mem.branchCorrect;
-        if(exe_mem.branchTaken == 1
+        if(exe_mem.branchCorrect == 0
         && (!strcmp(exe_mem.instruction, "beq")
          || !strcmp(exe_mem.instruction, "bne"))){
             exe_mem.instruction = "squash";
@@ -636,10 +636,10 @@ void fetchStage(void){
         int unbranchedPC = pc;
         //fetch new instruction at PC
         if_id.instruction = numToInstr(arr[pc][0]);
-        if((exe_mem.branchTaken == 1
+        if((exe_mem.branchCorrect == 0
         && (!strcmp(exe_mem.instruction, "beq")
          || !strcmp(exe_mem.instruction, "bne")))
-        ||(id_exe.branchTaken == 1
+        ||(id_exe.branchCorrect == 0
         && ((!strcmp(id_exe.instruction, "beq")
          || !strcmp(id_exe.instruction, "bne"))))){
              fakeexecute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
@@ -652,11 +652,12 @@ void fetchStage(void){
                  //then do predictTaken and stuff
                 /* int prediction = branchPredict();
                 int predictionCorrect = (prediction != (unbranchedPC == pc));*/
+                //change prediction based on what prediction model you are using.
                 int prediction = 0;
                 int predictionCorrect = (prediction == wasBranchTaken);
                  
                 if_id.branchTaken = wasBranchTaken;
-                if_id.branchCorrect = !if_id.branchTaken;
+                if_id.branchCorrect = predictionCorrect;
                 if_id.branchLocation = pc;
                 //update prediction stuff
                 correctPredictions += predictionCorrect;
