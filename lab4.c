@@ -873,6 +873,9 @@ int main(int argc, char* argv[]){
         		}
     		printf("\tSimulator reset\n");	
     		break;
+        case 'b':
+            //output branch predictor accuracy
+            printf("accuracy %.2lf% (%i correct predictions, %i predictions\n", (double)correctPredictions/totalPredictions, correctPredictions, totalPredictions);
         case 'q' :
             line = NULL;
             break;
