@@ -649,15 +649,20 @@ void fetchStage(void){
             if(!strcmp(if_id.instruction, "beq")
             ||!strcmp(if_id.instruction, "bne")){
                 int wasBranchTaken = (unbranchedPC != pc);
-                 //then do predictTaken and stuff
-                /* int prediction = branchPredict();
-                int predictionCorrect = (prediction != (unbranchedPC == pc));*/
-                //change prediction based on what prediction model you are using.
-                int prediction = 0;
+                //change branchPredict() based on what model you
+                //are using(ex: predict never branch, always branch,
+                // some other model...)
+                int prediction = branchPredict();
+                
                 int predictionCorrect = (prediction == wasBranchTaken);
                  
                 if_id.branchTaken = wasBranchTaken;
                 if_id.branchCorrect = predictionCorrect;
+                //if branch was not taken, next instruction is at
+                //(currentPC + 1).
+                if(!wasBranchTaken){
+                    pc++;
+                }
                 if_id.branchLocation = pc;
                 //update prediction stuff
                 correctPredictions += predictionCorrect;
@@ -666,20 +671,20 @@ void fetchStage(void){
                 //if it predicts it does branch,
                 //set the PC to the branched instruction(even if its wrong).
                 //(it'll be fixed in the mem stage)
-                /*(prediction == 1){
-                    pc = unbranchedPC + arr[pc][3];
+                if(prediction == 1){
+                    pc = unbranchedPC + arr[unbranchedPC][3];
                 }
                 else { //(prediction == 0)
                     pc = unbranchedPC;
-                }*/
+                }
             }
             else{
              if_id.branchTaken = 1;
              if_id.branchLocation = pc;
+             if_id.branchCorrect = 1;
              pc = unbranchedPC;
             }
         }
-        pc = unbranchedPC;
         pc++;
     }
 }
@@ -911,8 +916,8 @@ int main(int argc, char* argv[]){
     		break;
         case 'b':
             //output branch predictor accuracy
-            printf("accuracy %.2lf% (%i correct predictions, %i predictions\n",
-             (double)correctPredictions/totalPredictions,
+            printf("accuracy %.2lf% (%i correct predictions, %i predictions)\n",
+             ((double)correctPredictions/totalPredictions) * 100,
              correctPredictions,
              totalPredictions);
             break;
