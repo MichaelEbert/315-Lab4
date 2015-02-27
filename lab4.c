@@ -37,16 +37,57 @@ interstageRegister if_id = {.instruction = "empty", .branchTaken = 0, .branchLoc
 interstageRegister id_exe = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
 interstageRegister exe_mem = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
 interstageRegister mem_wb = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
+//Predictor stuff
+int GHR = 0;
+int GHRSize = 0;
+int *selectorTable;
+int correctPredictions = 0;
+int totalPredictions = 0;
 
 void stripComments(char* line){
     char* commentPos;
     commentPos = strchr(line, '#');
-	if(commentPos == NULL){
-		commentPos = line + strlen(line);
-	}
-	*commentPos = '\0';
-	return;
+    if(commentPos == NULL){
+    commentPos = line + strlen(line);
+    }
+    *commentPos = '\0';
+    return;
 }
+
+inline int clampInt(int target, int min, int max){
+    if(target < min){
+    return min;
+    }
+    if(target > max){
+    return max;
+    }
+    return target;
+}
+
+void initializeSelectorTable(void){
+    selectorTable = calloc(sizeof(int), (1<<GHRSize));
+}
+
+void destroySelectorTable(void){
+    free(selectorTable);
+}
+
+int branchPredict(void){
+    totalPredictions++;
+    return selectorTable[GHR] >= 2;
+}
+
+void updateGHR(int pathTaken){
+GHR <<= 1;
+GHR &= (1 << GHRSize) - 1;
+GHR |= (1 & pathTaken);
+}
+
+void updatePredict(int pathTaken){
+    selectorTable[GHR] += ((pathTaken*2) - 1);
+    selectorTable[GHR] = clampInt(selectorTable[GHR], 0, 3);
+    updateGHR(pathTaken);
+} 
 
 void stripCommentsAndLabels(char* line){
 	char *colonAddr, *strippedLine;
