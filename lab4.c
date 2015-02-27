@@ -32,10 +32,12 @@ int pc = 0;
 int sim_pc = 0;
 int num_instr = 0;
 int cycles = 0;
+
 interstageRegister if_id = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
 interstageRegister id_exe = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
 interstageRegister exe_mem = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
 interstageRegister mem_wb = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
+
 void stripComments(char* line){
     char* commentPos;
     commentPos = strchr(line, '#');
@@ -255,6 +257,7 @@ char* numToInstr(int num){
 			break;
 	}
 }
+
 int instrToNum(char* instr){
 	if(!strcmp(instr, "add")){
 		return 0;
@@ -381,6 +384,7 @@ void fakeexecute(int instr, int r1, int r2, int r3){
 		
 	}
 }
+
 int detectStall (int pcount, char *idexe) {
 	int lwReg;
 	int stall = 0;
@@ -414,8 +418,6 @@ int detectStall (int pcount, char *idexe) {
 	return stall;
 }
     
-
-
 //Note: argNum starts from 1, not 0 - arg 0 is the instruction!
 int correctArg(int instrNum, int instr, int argNum, char* arg, labelList* labelHead){
     switch(instr){
@@ -520,7 +522,8 @@ MIPSemulator_memory(){
     mem_wb = morestuff;
 }
     */
-    void writebackStage(void){
+
+void writebackStage(void){
     mem_wb.instruction = "empty";
     return;
 }
@@ -544,6 +547,7 @@ void memoryStage(void){
         }
     }
 }
+
 void executeStage(void){
     //this stage has the LW stall
     //if exe_mem register is free
@@ -562,7 +566,6 @@ void executeStage(void){
         }
     }
 }
-
         
 void decodeStage(void){
     //if id_exe register is free
