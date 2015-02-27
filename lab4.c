@@ -576,6 +576,7 @@ void memoryStage(void){
         mem_wb.instruction = exe_mem.instruction;
         mem_wb.branchTaken = exe_mem.branchTaken;
         mem_wb.branchLocation = exe_mem.branchLocation;
+        mem_wb.branchCorrect = exe_mem.branchCorrect;
         if(exe_mem.branchTaken == 1
         && (!strcmp(exe_mem.instruction, "beq")
          || !strcmp(exe_mem.instruction, "bne"))){
@@ -597,7 +598,7 @@ void executeStage(void){
         exe_mem.instruction = id_exe.instruction;
         exe_mem.branchTaken = id_exe.branchTaken;
         exe_mem.branchLocation = id_exe.branchLocation;
-
+        exe_mem.branchCorrect = id_exe.branchCorrect;
         //need to figure out how detectStall works, feed in right parameters
         //I do know that detectStall checks for "lw", so no need for that here
         if(detectStall(pc - 1,id_exe.instruction)){
@@ -615,8 +616,9 @@ void decodeStage(void){
         id_exe.instruction = if_id.instruction;
         id_exe.branchTaken = if_id.branchTaken;
         id_exe.branchLocation = if_id.branchLocation;
+        id_exe.branchCorrect = if_id.branchCorrect;
         //j or jal or jr (add later) AND jumped
-        if(if_id.branchTaken == 1
+        if(1 == 1
         && (!strcmp(if_id.instruction, "j")
          || !strcmp(if_id.instruction, "jr")
          || !strcmp(if_id.instruction, "jal"))){
@@ -646,16 +648,19 @@ void fetchStage(void){
             execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
             if(!strcmp(if_id.instruction, "beq")
             ||!strcmp(if_id.instruction, "bne")){
+                int wasBranchTaken = (unbranchedPC != pc);
                  //then do predictTaken and stuff
-                 int prediction = branchPredict();
-                int correctPrediction = (prediction != (unbranchedPC == pc));
+                /* int prediction = branchPredict();
+                int predictionCorrect = (prediction != (unbranchedPC == pc));*/
+                int prediction = 0;
+                int predictionCorrect = (prediction == wasBranchTaken);
                  
-                if_id.branchTaken = (pc != unbranchedPC);
-                if_id.branchCorrect = correctPrediction;
+                if_id.branchTaken = wasBranchTaken;
+                if_id.branchCorrect = !if_id.branchTaken;
                 if_id.branchLocation = pc;
                 //update prediction stuff
-                correctPredictions += correctPrediction;
-                updatePredict(unbranchedPC == pc);
+                correctPredictions += predictionCorrect;
+                updatePredict(wasBranchTaken);
                 //HACK to get this to work:
                 //if it predicts it does branch,
                 //set the PC to the branched instruction(even if its wrong).
