@@ -23,6 +23,7 @@ typedef struct{
     char* instruction;
     int branchTaken;
     int branchLocation;
+    int branchCorrect;
 }interstageRegister;
 
 int reg[27];
@@ -33,10 +34,10 @@ int sim_pc = 0;
 int num_instr = 0;
 int cycles = 0;
 
-interstageRegister if_id = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
-interstageRegister id_exe = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
-interstageRegister exe_mem = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
-interstageRegister mem_wb = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0};
+interstageRegister if_id = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0, .branchCorrect = 0};
+interstageRegister id_exe = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0, .branchCorrect = 0};
+interstageRegister exe_mem = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0, .branchCorrect = 0};
+interstageRegister mem_wb = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0, .branchCorrect = 0};
 //Predictor stuff
 int GHR = 0;
 int GHRSize = 0;
@@ -643,17 +644,36 @@ void fetchStage(void){
          }
          else{
             execute(arr[pc][0], arr[pc][1], arr[pc][2], arr[pc][3]);
+            if(!strcmp(if_id.instruction, "beq")
+            ||!strcmp(if_id.instruction, "bne")){
+                 //then do predictTaken and stuff
+                 int prediction = branchPredict();
+                int correctPrediction = (prediction != (unbranchedPC == pc));
+                 
+                if_id.branchTaken = (pc != unbranchedPC);
+                if_id.branchCorrect = correctPrediction;
+                if_id.branchLocation = pc;
+                //update prediction stuff
+                correctPredictions += correctPrediction;
+                updatePredict(unbranchedPC == pc);
+                //HACK to get this to work:
+                //if it predicts it does branch,
+                //set the PC to the branched instruction(even if its wrong).
+                //(it'll be fixed in the mem stage)
+                /*(prediction == 1){
+                    pc = unbranchedPC + arr[pc][3];
+                }
+                else { //(prediction == 0)
+                    pc = unbranchedPC;
+                }*/
+            }
+            else{
+             if_id.branchTaken = 1;
+             if_id.branchLocation = pc;
+             pc = unbranchedPC;
+            }
         }
-        //if branch taken
-        if(unbranchedPC != pc){
-            if_id.branchTaken = 1;
-            if_id.branchLocation = pc;
-            pc = unbranchedPC;
-        }
-        else{
-            if_id.branchTaken = 0;
-            if_id.branchLocation = 0;
-        }
+        pc = unbranchedPC;
         pc++;
     }
 }
@@ -784,7 +804,17 @@ int main(int argc, char* argv[]){
    
     if(argc > 2){
     	script = fopen(argv[2], "r");
-    } 
+    }
+
+    if(argc > 3){
+        //does this segfault?
+        GHRSize = atoi(argv[3]);
+    }
+    else{
+        GHRSize = 2;
+    }
+    initializeSelectorTable();
+    
     while(line){
         char* commandArg;
         int numLines;
@@ -875,7 +905,11 @@ int main(int argc, char* argv[]){
     		break;
         case 'b':
             //output branch predictor accuracy
-            printf("accuracy %.2lf% (%i correct predictions, %i predictions\n", (double)correctPredictions/totalPredictions, correctPredictions, totalPredictions);
+            printf("accuracy %.2lf% (%i correct predictions, %i predictions\n",
+             (double)correctPredictions/totalPredictions,
+             correctPredictions,
+             totalPredictions);
+            break;
         case 'q' :
             line = NULL;
             break;
