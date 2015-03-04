@@ -668,6 +668,7 @@ void fetchStage(void){
                 correctPredictions += predictionCorrect;
                 updatePredict(wasBranchTaken);
                 //HACK to get this to work:
+                //(ideally, we wouldn't use arr[unbrachedpc][3])
                 //if it predicts it does branch,
                 //set the PC to the branched instruction(even if its wrong).
                 //(it'll be fixed in the mem stage)
