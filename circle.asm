@@ -79,14 +79,14 @@ xleqy:	slt $t0, $s3, $s2
 	jal plot
 
 	#if g >= 0: g+= diagonalInc
-	slti $t0, $s4, 0
+	slt $t0, $s4, $0
 	bne $t0, $0, gltz
 	add $s4, $s4, $s5 
 	#diagonalInc+=8
 	addi $s5, $s5, 8
 	#y-=1
 	addi $s3, $s3, -1
-	br gend
+	j gend
 #else
 gltz:	add $s4, $s4, $s6
 	addi $s5, $s5, 4
@@ -116,6 +116,7 @@ plot:
 	jr $ra
 	
 main:	addi $s7, $0, 0
+    addi $sp, $0, 8192
 
 	addi $a0, $0, 30
 	addi $a1, $0, 100

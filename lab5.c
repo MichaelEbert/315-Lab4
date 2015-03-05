@@ -402,7 +402,7 @@ int instrToNum(char* instr){
 		return 13;
 	}
 	//invalid instruction!
-	printf("invalid instruction %s\n", instr);
+	printf("invalid instruction %s. Interpreting as add.\n", instr);
 	return 0;
 }
 
