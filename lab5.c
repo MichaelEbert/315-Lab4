@@ -733,7 +733,7 @@ void fetchStage(void){
 void outputCoords(void){
     FILE* coordFile = fopen("coordinates.csv", "w");
     if(coordFile == NULL){
-        printf("Writing coordinates.csv failed!");
+        printf("Writing coordinates.csv failed!\n");
     }
     //loop through each memory location, writing stuff each time.
     //668 = hardcoded # of values to print.

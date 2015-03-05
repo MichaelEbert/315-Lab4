@@ -33,7 +33,7 @@ circle:
 	sw $ra, 28($sp)
 	#initialize our registers
 	#x = 0, y = r
-	addi $s2, $0, 0
+	addi $s2, $0, 0 ##line 10
 	addi $s3, $a2, 0
 	#g = 3 - 2*r
 	add $s4, $a2, $a2
@@ -44,12 +44,12 @@ circle:
 	sub $s4, $t0, $s4
 	#diagonalInc
 	addi $t0, $0, 10
-	sub $t3, $t0, $t3
+	sub $s5, $t0, $s5
 	#rightInc
 	addi $s6, $0, 6
 	#xc and yc
 	addi $s0, $a0, 0
-	addi $s1, $a1, 0
+	addi $s1, $a1, 0 ##line 20
 
 #x Lessthan or EQualto y, which is the same as !(x>y)
 xleqy:	slt $t0, $s3, $s2
@@ -64,7 +64,7 @@ xleqy:	slt $t0, $s3, $s2
 
 	sub $a0, $s0, $s2
 	add $a1, $s1, $s3
-	jal plot
+	jal plot ##line 30
 	sub $a1, $s1, $s3
 	jal plot
 	
@@ -76,7 +76,7 @@ xleqy:	slt $t0, $s3, $s2
 
 	sub $a0, $s0, $s3
 	add $a1, $s1, $s2
-	jal plot
+	jal plot ##line 40
 	sub $a1, $s1, $s2
 	jal plot
 
@@ -84,7 +84,7 @@ xleqy:	slt $t0, $s3, $s2
 	slt $t0, $s4, $0
 	bne $t0, $0, gltz
 	##g+= diagonalInc##
-	add $s4, $s4, $s5 
+	add $s4, $s4, $s5 ##line 45
 	##diagonalInc+=8##
 	addi $s5, $s5, 8
 	##y-=1##
@@ -92,7 +92,7 @@ xleqy:	slt $t0, $s3, $s2
 	j gend
     ##else##
 gltz:	add $s4, $s4, $s6
-	addi $s5, $s5, 4
+	addi $s5, $s5, 4##line 50
 
 #end of if(g>=0) block
 gend:	addi $s6, $s6, 4
