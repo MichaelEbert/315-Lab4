@@ -7,14 +7,14 @@
 #$a1 = yc
 #$a2 = r
 
-#$s0 = xc#
-#$s1 = yc#
-#$s2 = x#
-#$s3 = y#
-#$s4 = g#
-#$s5 = diagonalInc#
-#$s6 = rightInc#
-#$t0 = temp#
+#$s0 = xc
+#$s1 = yc
+#$s2 = x
+#$s3 = y
+#$s4 = g
+#$s5 = diagonalInc
+#$s6 = rightInc
+#$t0 = temp
 
 #$s7 = next address to plot to
 
@@ -51,10 +51,11 @@ circle:
 	addi $s0, $a0, 0
 	addi $s1, $a1, 0
 
-#x Lessthan or EQualto y, which is the same as y >= x
+#x Lessthan or EQualto y, which is the same as !(x>y)
 xleqy:	slt $t0, $s3, $s2
 	bne $t0, $0, xend
-
+	
+    #the plots
 	add $a0, $s0, $s2
 	add $a1, $s1, $s3
 	jal plot
@@ -79,16 +80,17 @@ xleqy:	slt $t0, $s3, $s2
 	sub $a1, $s1, $s2
 	jal plot
 
-	#if g >= 0: g+= diagonalInc
+	##if g >= 0## (g not < 0)
 	slt $t0, $s4, $0
 	bne $t0, $0, gltz
+	##g+= diagonalInc##
 	add $s4, $s4, $s5 
-	#diagonalInc+=8
+	##diagonalInc+=8##
 	addi $s5, $s5, 8
-	#y-=1
+	##y-=1##
 	addi $s3, $s3, -1
 	j gend
-#else
+    ##else##
 gltz:	add $s4, $s4, $s6
 	addi $s5, $s5, 4
 

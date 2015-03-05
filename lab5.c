@@ -549,11 +549,11 @@ int correctArg(int instrNum, int instr, int argNum, char* arg, labelList* labelH
     	case 2 :	// or
     	case 3 :	// sub
     	case 4 :	// slt
-    	case 5 :	// sll
     	case 11 :	// jr
             return strToReg(arg);
             break;
         //arg1, arg2 are registers, arg3 is immediate
+    	case 5 :	// sll
     	case 6 :	// addi
     	    if(argNum == 1 || argNum == 2){
     	        return strToReg(arg);
