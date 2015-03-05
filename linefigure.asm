@@ -5,13 +5,6 @@
 # a2 = x1
 # a3 = y1
 
-	add	$s7, $0, $0
-
-	addi	$a0, $0, 30
-	addi	$a1, $0, 80
-	addi	$a2, $0, 30
-	addi	$a3, $0, 30
-
 line: 	sub	$s0, $a3, $a1	# $s0 holds y1 - y0
 	sub	$s1, $a2, $a0	# $s1 holds x1 - x0
 	
@@ -120,4 +113,5 @@ yx:	add	$s3, $s3, $s1	# error = error + deltay
 else5:	addi	$s6, $s6, 1	# increment $s6 (x) for for loop
 	j for1			# for loop
 
-end4:
+end4:	jr $ra
+	add	$0, $0, $0
