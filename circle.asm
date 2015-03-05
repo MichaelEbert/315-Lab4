@@ -122,3 +122,5 @@ main:	addi $s7, $0, 0
 	addi $a1, $0, 100
 	addi $a2, $0, 20
 	jal circle
+	#need fake instruction to correctly run
+	sll $0, $0, 0
