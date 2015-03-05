@@ -1,41 +1,27 @@
-;Circle algorithms in MIPS assember
-;parameters: xc, yc, r
-;xc = x center, yc = y center, r = radius
+#Circle algorithms in MIPS assember
+#parameters: xc, yc, r
+#xc = x center, yc = y center, r = radius
 
-x = 0;
-y = r;
-g = 3 -2*r
-diagonalInc = 10-4*r
-rightInc = 6
-while(x <= y){
-plot(xc+x, yc+y)
-plot(xc+x, yc - y)
-plot(xc-x,yc+y
-xc-x,yc-y
-xc+y
-+y
--y
--y
-}
-;and then more stuff here
-}
-$a0 = xc
-$a1 = yc
-$a2 = r
+#circle expects 3 arguments (arguments explained above):
+#$a0 = xc
+#$a1 = yc
+#$a2 = r
 
-$s0 = xc;
-$s1 = yc;
-$s2 = x;
-$s3 = y;
-$s4 = g;
-$s5 = diagonalInc;
-$s6 = rightInc;
-$t0 = temp;
+#$s0 = xc#
+#$s1 = yc#
+#$s2 = x#
+#$s3 = y#
+#$s4 = g#
+#$s5 = diagonalInc#
+#$s6 = rightInc#
+#$t0 = temp#
 
-$s7 = next address to plot to
+#$s7 = next address to plot to
 
+#main is the last function in the program, so the program will exit when it completes.
+	j main
 circle:
-	;save previous registers
+	#save previous registers
 	addi $sp, $sp, -32
 	sw $s0, 0($sp)
 	sw $s1, 4($sp)
@@ -45,26 +31,26 @@ circle:
 	sw $s5, 20($sp)
 	sw $s6, 24($sp)
 	sw $ra, 28($sp)
-	;initialize our registers
+	#initialize our registers
 	addi $s2, $s2, 0
 	addi $s3, $a2, 0
-	;g = 3 - 2*r
+	#g = 3 - 2*r
 	add $s4, $a2, $a2
-	;premultiply for diagonalInc
+	#premultiply for diagonalInc
 	add $s5, $s4, $s4
-	;continue with g
+	#continue with g
 	addi $t0, $0, 3
 	sub $s4, $t0, $s4
-	;diagonalInc
+	#diagonalInc
 	addi $t0, $0, 10
 	sub $t3, $t0, $t3
-	;rightInc
+	#rightInc
 	addi $s6, $0, 6
-	;xc and yc
+	#xc and yc
 	addi $s0, $a0, 0
 	addi $s1, $a1, 0
 
-;x <= y === y >= x
+#x <= y === y >= x
 xleqy:	slt $t0, $s3, $s2
 	bne $t0, $0, xend
 
@@ -92,26 +78,26 @@ xleqy:	slt $t0, $s3, $s2
 	sub $a1, $s1, $s2
 	jal plot
 
-	;if g >= 0: g+= diagonalInc
-	slti $t0, $s4, 0
+	#if g >= 0: g+= diagonalInc
+	slt $t0, $s4, $0
 	bne $t0, $0, gltz
 	add $s4, $s4, $s5 
-	;diagonalInc+=8
+	#diagonalInc+=8
 	addi $s5, $s5, 8
-	;y-=1
+	#y-=1
 	addi $s3, $s3, -1
-	br gend
-;else
+	j gend
+#else
 gltz:	add $s4, $s4, $s6
 	addi $s5, $s5, 4
 
-;end if(g>=0) block
+#end if(g>=0) block
 gend:	addi $s6, $s6, 4
 	addi $s2, $s2, 1
 
-;end x<=y loop
+#end x<=y loop
 xend:
-;end: restore registers
+#end: restore registers
 	lw $s0, 0($sp)
 	lw $s1, 4($sp)
 	lw $s2, 8($sp)
@@ -129,3 +115,12 @@ plot:
 	addi $s7, 8
 	jr $ra
 	
+main:	addi $s7, $0, 0
+    addi $sp, $0, 8192
+
+	addi $a0, $0, 30
+	addi $a1, $0, 100
+	addi $a2, $0, 20
+	jal circle
+	#need fake instruction to correctly run
+	sll $0, $0, 0
