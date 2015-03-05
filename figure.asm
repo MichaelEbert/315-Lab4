@@ -1,3 +1,17 @@
+# MAIN
+add	$s7, $0, $0
+addi	$sp, $0, 8191
+
+addi	$a0, $0, 30	#head
+addi	$a1, $0, 100
+addi	$a2, $0, 20
+#jal	circle
+
+addi	$a0, $0, 30	#body
+addi	$a1, $0, 80
+addi	$a2, $0, 30
+addi	$a3, $0, 30
+jal	line
 
 addi	$a0, $0, 20	#left leg
 addi	$a1, $0, 1
@@ -5,8 +19,54 @@ addi	$a2, $0, 30
 addi	$a3, $0, 30
 jal	line
 
+addi	$a0, $0, 40	#right leg
+addi	$a1, $0, 1
+addi	$a2, $0, 30
+addi	$a3, $0, 30
+jal	line
+
+addi	$a0, $0, 15	#left arm
+addi	$a1, $0, 60
+addi	$a2, $0, 30
+addi	$a3, $0, 50
+jal	line
+
+addi	$a0, $0, 30	#right arm
+addi	$a1, $0, 50
+addi	$a2, $0, 45
+addi	$a3, $0, 60
+jal	line
+
+addi	$a0, $0, 24	#left eye
+addi	$a1, $0, 105
+addi	$a2, $0, 3
+#jal	circle
+
+addi	$a0, $0, 36	#right eye
+addi	$a1, $0, 105
+addi	$a2, $0, 3
+#jal	circle
+
+addi	$a0, $0, 25	#mouth center
+addi	$a1, $0, 90
+addi	$a2, $0, 35
+addi	$a3, $0, 90
+jal	line
+
+addi	$a0, $0, 25	#mouth left
+addi	$a1, $0, 90
+addi	$a2, $0, 20
+addi	$a3, $0, 95
+jal	line
+
+addi	$a0, $0, 35	#mouth right
+addi	$a1, $0, 90
+addi	$a2, $0, 40
+addi	$a3, $0, 95
+jal	line
 
 j	end
+
 
 
 

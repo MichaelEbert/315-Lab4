@@ -47,7 +47,7 @@ int pc = 0;
 int dataMem[8192];
 
 //instruction memory
-int arr[100][4];
+int arr[300][4];
 
 //used for pipeline things.
 int sim_pc = 0;
