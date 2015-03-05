@@ -436,10 +436,10 @@ void execute(int instr, int r1, int r2, int r3){
 			reg[r1] = reg[r2] + r3;
 			break;
 		case 7 :	// lw
-			reg[r1] = dataMem[(reg[r3] + r2)/4];
+			reg[r1] = dataMem[reg[r3] + r2];
 			break;
 		case 8 :	// sw
-			dataMem[(reg[r3] + r2)/4] = reg[r1];
+			dataMem[reg[r3] + r2] = reg[r1];
 			break;
 		case 9 :	// j
 			pc = r1;
