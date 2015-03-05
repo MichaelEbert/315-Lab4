@@ -28,7 +28,7 @@ typedef struct{
 
 int reg[27];
 int dataMem[8192];
-int arr[100][4];
+int arr[1000][4];
 int pc = 0;
 int sim_pc = 0;
 int num_instr = 0;
@@ -374,7 +374,7 @@ void execute(int instr, int r1, int r2, int r3){
 			reg[r1] = dataMem[reg[r3] + r2];
 			break;
 		case 8 :	// sw
-			dataMem[reg[r3] + r2] = reg[r1];
+			dataMem[reg[r3] + r2/4] = reg[r1];
 			break;
 		case 9 :	// j
 			pc = r1;
