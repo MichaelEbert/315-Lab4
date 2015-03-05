@@ -19,6 +19,18 @@ typedef struct labelList{
     int lineNum;
 } labelList;
 
+/*
+ * instruction: contains the string of the instruction in the register.
+ * branchTaken: is this branch taken (depreciated)
+ * branchLocation: the CORRECT location of the PC after this instruction.
+ *                 (NOT always the location if the branch is taken.)
+ * branchCorrect: did the predictor correctly predict whether this branch was taken?
+ *                 (if predictor was wrong, PC will snap to branchLocation 
+ *                 sometime in the pipeline.)
+ *
+ *Note: branchTaken is depreciated. It shouldn't be necessary anymore,
+ * but I don't want to risk deleting it and having bugs come up.
+ */
 typedef struct{
     char* instruction;
     int branchTaken;
@@ -26,10 +38,18 @@ typedef struct{
     int branchCorrect;
 }interstageRegister;
 
-int reg[27];
-int dataMem[8192];
-int arr[100][4];
+//stores the register values of the MIPS registers that we are implementing.
+int reg[28];
+//Program counter
 int pc = 0;
+
+// simulated RAM
+int dataMem[8192];
+
+//instruction memory
+int arr[100][4];
+
+//used for pipeline things.
 int sim_pc = 0;
 int num_instr = 0;
 int cycles = 0;
@@ -38,6 +58,7 @@ interstageRegister if_id = {.instruction = "empty", .branchTaken = 0, .branchLoc
 interstageRegister id_exe = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0, .branchCorrect = 0};
 interstageRegister exe_mem = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0, .branchCorrect = 0};
 interstageRegister mem_wb = {.instruction = "empty", .branchTaken = 0, .branchLocation = 0, .branchCorrect = 0};
+
 //Predictor stuff
 int GHR = 0;
 int GHRSize = 0;
@@ -45,6 +66,9 @@ int *selectorTable;
 int correctPredictions = 0;
 int totalPredictions = 0;
 
+/*strips everything after the first '#' in the string, including the '#'.
+ * 
+ */
 void stripComments(char* line){
     char* commentPos;
     commentPos = strchr(line, '#');
@@ -55,6 +79,8 @@ void stripComments(char* line){
     return;
 }
 
+/*clamps |target| to a value between |min| and |max|.
+ */
 static int clampInt(int target, int min, int max){
     if(target < min){
     return min;
@@ -65,6 +91,7 @@ static int clampInt(int target, int min, int max){
     return target;
 }
 
+
 void initializeSelectorTable(void){
     selectorTable = calloc(sizeof(int), (1<<GHRSize));
 }
@@ -73,23 +100,38 @@ void destroySelectorTable(void){
     free(selectorTable);
 }
 
+/* Predicts whether the next instruction will branch or not.
+ * returns 1 if it will branch, 0 if it will not.
+ * To change the prediction algorithm, do it here.
+ */
 int branchPredict(void){
     totalPredictions++;
     return selectorTable[GHR] >= 2;
 }
 
+/* updates the global history register (used in branch prediction).
+ */
 void updateGHR(int pathTaken){
 GHR <<= 1;
 GHR &= (1 << GHRSize) - 1;
 GHR |= (1 & pathTaken);
 }
 
+/* Updates the branch prediction data.
+ * To change the prediction algorithm, this will probably also need to be changed.
+ */
 void updatePredict(int pathTaken){
     selectorTable[GHR] += ((pathTaken*2) - 1);
     selectorTable[GHR] = clampInt(selectorTable[GHR], 0, 3);
     updateGHR(pathTaken);
 } 
 
+/* Strips comments and labels from a string.
+ * Removes everything including and after the first '#'
+ * and before and including the  first ':'.
+ *
+ * Note: this means that multiple labels on the same line are not supported.
+ */
 void stripCommentsAndLabels(char* line){
 	char *colonAddr, *strippedLine;
 	int newLineLength;
@@ -114,6 +156,8 @@ void stripCommentsAndLabels(char* line){
 	return;
 }
 
+/* Cleans a word.
+ */
 char* cleanWord(char *word){
     char *temp = word;
     int len = strlen(word);
@@ -126,9 +170,14 @@ char* cleanWord(char *word){
     return word;
 }
 
+/* Takes in a register string, and outputs our internal number for the register.
+ * 
+ * Note: the number returned does NOT necessarily equal the actual number of the
+ * register. Ex: register $1 is 27 in our implementation.
+ *
+ * IF YOU ADD REGISTERS: make sure to increase the size of the reg[] global array.
+ */
 int strToReg(char* reg){ 
-    //strcpy(reg, strtok(NULL, ",()	 "));
-    //cleanWord(reg);
     int num;
     if(!strcmp(reg, "$0") || !strcmp(reg, "$zero")){
         num = 0;
@@ -225,7 +274,9 @@ int strToReg(char* reg){
     return num;
 }
 
-//returns -1 if not a label
+/* takes a string and outputs the address of the instruction that the label points to.
+ * returns -1 if not a label
+ */
 int strToLabel(char* arg, labelList* labelHead){
     while(labelHead != NULL){
         //if this is correct label
@@ -239,7 +290,10 @@ int strToLabel(char* arg, labelList* labelHead){
     return -1;
 }
 
-//if arg is a label, returns the instruction address the label points to.
+/*Takes in an argument (could be a label or an integer) and returns the value of
+ * that argument. If arg is an int, it returns that int. If arg is a label,
+ * returns the address of the instruction that the label points to.
+ */
 int strToImm(char* arg, labelList* labelHead){
     int instrAddr = strToLabel(arg, labelHead);
     if(instrAddr != -1){
@@ -250,6 +304,8 @@ int strToImm(char* arg, labelList* labelHead){
     }
 }
 
+/* Takes a number, and returns the string of that corresponding instruction.
+ */
 char* numToInstr(int num){
 	switch(num){
 		case 0 :
@@ -300,6 +356,8 @@ char* numToInstr(int num){
 	}
 }
 
+/*Takes a string instruction, and returns the number of that instruction.
+ */
 int instrToNum(char* instr){
 	if(!strcmp(instr, "add")){
 		return 0;
@@ -344,9 +402,16 @@ int instrToNum(char* instr){
 		return 13;
 	}
 	//invalid instruction!
-	return 999;
+	printf("invalid instruction %s\n", instr);
+	return 0;
 }
 
+/* Executes an instruction with the corresponding arguments.
+ * PREREQUISITES: PC has NOT been incremented yet (i.e., it is at the same
+ * instruction that is currently executing).
+ * If the instruction is a jomp or branch, modifies the PC to point to the next
+ * instruction.
+ */
 void execute(int instr, int r1, int r2, int r3){
 	switch(instr){
 		case 0 :	// add
@@ -401,6 +466,9 @@ void execute(int instr, int r1, int r2, int r3){
 	num_instr++;
 }
 
+/* Doesn't actually do anything except change the PC. Used for instructions that
+ * will be invalidated by a branch.
+*/
 void fakeexecute(int instr, int r1, int r2, int r3){
 	switch(instr){
 		case 9 :	// j
@@ -426,6 +494,7 @@ void fakeexecute(int instr, int r1, int r2, int r3){
 		
 	}
 }
+
 
 int detectStall (int pcount, char *idexe) {
 	int lwReg;
@@ -459,8 +528,19 @@ int detectStall (int pcount, char *idexe) {
 	}
 	return stall;
 }
-    
-//Note: argNum starts from 1, not 0 - arg 0 is the instruction!
+
+/* Takes in a variety of parameters. Basic function is to take an instruction
+ * argument as a string, and using the instruction, return the correct integer
+ * value for that argument. 
+ *
+ * Example: for ADD instructions, transforms the arg
+ * into a register for all arguments (as all arguments of ADD are registers).
+ * for LW/SW, arguments 1 and 3 are registers, but argument 2 is an immediate,
+ * so correctArg() will return the correct register for arguments 1 and 3, and
+ * the correct immediate value for argument 2.
+ *
+ * Note: argNum starts from 1, not 0 - arg 0 is the instruction!
+ */
 int correctArg(int instrNum, int instr, int argNum, char* arg, labelList* labelHead){
     switch(instr){
         //All registers
@@ -521,6 +601,8 @@ int correctArg(int instrNum, int instr, int argNum, char* arg, labelList* labelH
     }
 }
 
+/* Next 5 functions: Hackishly simulate a 5-stage processor pipeline.
+*/
 void writebackStage(void){
     mem_wb.instruction = "empty";
     return;
@@ -646,6 +728,8 @@ void fetchStage(void){
     }
 }
 
+/* Outputs memory locations 0 to 668 into coordinates.csv, in 2 rows.
+ */
 void outputCoords(void){
     FILE* coordFile = fopen("coordinates.csv", "w");
     if(coordFile == NULL){
