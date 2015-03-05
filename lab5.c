@@ -55,7 +55,7 @@ void stripComments(char* line){
     return;
 }
 
-inline int clampInt(int target, int min, int max){
+static int clampInt(int target, int min, int max){
     if(target < min){
     return min;
     }
@@ -656,10 +656,10 @@ void outputCoords(void){
     for(int i = 0; i < 668; i++){
         fprintf(coordFile, "%i", dataMem[i]);
         if(i%2 == 0){
-            fputs(',', coordFile);
+            fputs(",", coordFile);
         }
         else{
-            fputs('\n', coordFile);
+            fputs("\n", coordFile);
         }
     }
     fclose(coordFile);
