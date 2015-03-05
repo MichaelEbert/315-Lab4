@@ -115,12 +115,12 @@ xend:
 
 plot:
 	sw $a0, 0($s7)
-	sw $a1, 4($s7)
-	addi $s7, $s7, 8
+	sw $a1, 1($s7)
+	addi $s7, $s7, 2
 	jr $ra
 	
 main:	addi $s7, $0, 0
-    addi $sp, $0, 8192
+    addi $sp, $0, 8191
 
 	addi $a0, $0, 30
 	addi $a1, $0, 100
