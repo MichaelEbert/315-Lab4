@@ -28,7 +28,7 @@ typedef struct{
 
 int reg[27];
 int dataMem[8192];
-int arr[5000][4];
+int arr[100][4];
 int pc = 0;
 int sim_pc = 0;
 int num_instr = 0;
